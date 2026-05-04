@@ -3,17 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard</title>
+<title>NOMAD — Dashboard</title>
 <style>
-  body{font-family:-apple-system,sans-serif;background:#f5f5f7;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-  .msg{text-align:center;color:#86868b}
-  .msg h2{color:#1d1d1f;margin-bottom:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;color:#1d1d1f}
+header{background:#111;color:#fff;padding:20px 32px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:18px;font-weight:600;letter-spacing:-.01em}
+.upd{font-size:12px;color:#777}
+main{max-width:1200px;margin:0 auto;padding:28px 32px}
+.tabs{display:flex;gap:8px;margin-bottom:28px}
+.tab{padding:8px 18px;border-radius:20px;font-size:13px;cursor:pointer;border:none;background:#e5e5ea;color:#1d1d1f;font-weight:500;transition:background .15s,color .15s}
+.tab.active{background:#111;color:#fff}
+.sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#86868b;margin:28px 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px}
+.card{background:#fff;border-radius:12px;padding:18px 20px}
+.card.blue{background:#0055ff;color:#fff}
+.lbl{font-size:11px;color:#86868b;margin-bottom:8px}
+.card.blue .lbl{color:rgba(255,255,255,.65)}
+.val{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.sub{font-size:11px;color:#86868b;margin-top:5px}
+.card.blue .sub{color:rgba(255,255,255,.6)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
+th{text-align:left;padding:11px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#86868b;border-bottom:1px solid #f2f2f7}
+td{padding:14px 16px;font-size:13px;border-bottom:1px solid #f2f2f7}
+tr.total td{border-bottom:none;font-weight:700;background:#f5f5f7}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
+@media(max-width:640px){main{padding:20px 16px}header{padding:16px}th,td{padding:10px 12px}table{font-size:12px}}
 </style>
 </head>
 <body>
-<div class="msg">
-  <h2>Aguardando primeira atualização</h2>
-  <p>O dashboard será gerado automaticamente pelo GitHub Actions.</p>
-</div>
+<header>
+  <h1>NOMAD</h1>
+  <span class="upd">Atualizado 04/05/2026 14:06</span>
+</header>
+<main>
+  <div class="tabs">
+    <button class="tab active" onclick="render('ontem',this)">Ontem</button>
+    <button class="tab" onclick="render('mtd',this)">Mês até hoje</button>
+  </div>
+  <p class="sec">Investimento e Retorno</p>
+  <div class="grid" id="kpi"></div>
+  <p class="sec">Por Plataforma</p>
+  <table>
+    <thead><tr>
+      <th>Plataforma</th><th>Investido</th><th>Cliques</th><th>Impressões</th>
+      <th>Conversões</th><th>Receita</th><th>CPA</th><th>ROAS</th>
+    </tr></thead>
+    <tbody id="ptable"></tbody>
+  </table>
+  <p class="sec">Site — Google Analytics 4</p>
+  <div class="grid" id="ga4"></div>
+  <p class="sec">Pedidos — Loja</p>
+  <div class="grid" id="wc"></div>
+</main>
+<footer>Dashboard gerado automaticamente · 04/05/2026 14:06</footer>
+<script>
+const D = {"ontem": {"meta": {"spend": 0.0, "impressions": 0, "clicks": 0, "reach": 0, "cpc": 0.0, "ctr": 0.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0}, "google_ads": {"spend": 0, "impressions": 0, "clicks": 0, "cpc": 0, "ctr": 0, "conversions": 0, "revenue": 0, "cpa": 0, "roas": 0}, "ga4": {"sessions": 0, "users": 0, "transactions": 0, "revenue": 0.0, "conversion_rate": 0.0}, "woocommerce": {"orders": 3, "revenue": 582.75, "avg_ticket": 194.25}}, "mtd": {"meta": {"spend": 0.0, "impressions": 0, "clicks": 0, "reach": 0, "cpc": 0.0, "ctr": 0.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0}, "google_ads": {"spend": 0, "impressions": 0, "clicks": 0, "cpc": 0, "ctr": 0, "conversions": 0, "revenue": 0, "cpa": 0, "roas": 0}, "ga4": {"sessions": 0, "users": 0, "transactions": 0, "revenue": 0.0, "conversion_rate": 0.0}, "woocommerce": {"orders": 5, "revenue": 1466.75, "avg_ticket": 293.35}}};
+const brl = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = v => Math.round(+v||0).toLocaleString('pt-BR');
+const xr  = v => (+v||0).toFixed(2) + 'x';
+const pct = v => (+v||0).toFixed(2) + '%';
+const card = (l,v,s,blue) => `<div class="card${blue?' blue':''}"><div class="lbl">${l}</div><div class="val">${v}</div>${s?`<div class="sub">${s}</div>`:''}</div>`;
+const prow = (color,name,d,conv) => `<tr>
+  <td><span class="dot" style="background:${color}"></span>${name}</td>
+  <td>${brl(d.spend)}</td><td>${num(d.clicks)}</td><td>${num(d.impressions)}</td>
+  <td>${num(conv)}</td><td>${brl(d.revenue)}</td><td>${brl(d.cpa)}</td><td>${xr(d.roas)}</td></tr>`;
+function render(p, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const {meta:m, google_ads:g, ga4, woocommerce:wc} = D[p];
+  const ts = m.spend + g.spend;
+  const tc = m.clicks + g.clicks;
+  const ti = m.impressions + g.impressions;
+  const tconv = (m.purchases||0) + (g.conversions||0);
+  const tr = m.revenue + g.revenue;
+  const tcpa = tconv ? ts/tconv : 0;
+  const troas = ts ? tr/ts : 0;
+  document.getElementById('kpi').innerHTML = [
+    card('Total Investido', brl(ts), 'Meta + Google Ads', true),
+    card('Receita (Ads)', brl(tr), 'atribuição das plataformas'),
+    card('ROAS Blendado', xr(troas), 'retorno sobre investimento'),
+    card('CPA Blendado', brl(tcpa), 'custo por conversão'),
+    card('Conversões', num(tconv), 'compras atribuídas'),
+    card('Cliques Totais', num(tc), 'Meta + Google Ads'),
+  ].join('');
+  document.getElementById('ptable').innerHTML =
+    prow('#0866ff','Meta Ads', m, m.purchases||0) +
+    prow('#ea4335','Google Ads', g, g.conversions||0) +
+    `<tr class="total"><td>Total</td><td>${brl(ts)}</td><td>${num(tc)}</td><td>${num(ti)}</td><td>${num(tconv)}</td><td>${brl(tr)}</td><td>${brl(tcpa)}</td><td>${xr(troas)}</td></tr>`;
+  document.getElementById('ga4').innerHTML = [
+    card('Sessões', num(ga4.sessions), ''),
+    card('Usuários', num(ga4.users), ''),
+    card('Transações', num(ga4.transactions), ''),
+    card('Receita GA4', brl(ga4.revenue), ''),
+    card('Taxa de Conversão', pct(ga4.conversion_rate), ''),
+  ].join('');
+  document.getElementById('wc').innerHTML = [
+    card('Pedidos', num(wc.orders), ''),
+    card('Receita Loja', brl(wc.revenue), ''),
+    card('Ticket Médio', brl(wc.avg_ticket), ''),
+  ].join('');
+}
+render('ontem');
+</script>
 </body>
 </html>
