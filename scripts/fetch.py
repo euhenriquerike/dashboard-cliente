@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, RunReportRequest
 from google.ads.googleads.client import GoogleAdsClient
+from google.auth.transport.requests import Request
 from google.oauth2 import service_account, credentials as oauth2_credentials
 from woocommerce import API as WcAPI
 
@@ -102,6 +103,7 @@ def fetch_ga4(since, until):
                 client_id=os.environ["GOOGLE_ADS_CLIENT_ID"],
                 client_secret=os.environ["GOOGLE_ADS_CLIENT_SECRET"],
             )
+            creds.refresh(Request())
         else:
             creds = service_account.Credentials.from_service_account_info(
                 json.loads(os.environ["GA4_CREDENTIALS_JSON"]),
