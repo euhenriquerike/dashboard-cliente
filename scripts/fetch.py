@@ -80,6 +80,7 @@ def fetch_google_ads(since, until):
             json={"query": query},
             timeout=30,
         )
+        print(f"[Google Ads debug] status={r.status_code} body={r.text[:400]}")
         data = r.json()
         if "error" in data:
             raise RuntimeError(data["error"].get("message", str(data["error"])))
