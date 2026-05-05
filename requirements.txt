@@ -1,5 +1,4 @@
 requests==2.32.3
-httpx[http2]==0.27.2
 google-analytics-data==0.18.13
 google-auth==2.29.0
 WooCommerce==3.0.0
