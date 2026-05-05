@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import os
-import httpx
 import requests
 from datetime import datetime, timedelta
 
@@ -61,27 +60,47 @@ def fetch_google_ads(since, until):
         ).json()
         if "access_token" not in tok:
             raise RuntimeError(f"token exchange failed: {tok.get('error')}")
+
+        access_token = tok["access_token"]
+
+        # debug: check token scopes
+        ti = requests.get(
+            f"https://oauth2.googleapis.com/tokeninfo?access_token={access_token}",
+            timeout=10,
+        ).json()
+        print(f"[Google Ads token] scope={ti.get('scope', 'unknown')[:200]}")
+
         customer_id = os.environ["GOOGLE_ADS_CUSTOMER_ID"].replace("-", "").strip()
         headers = {
-            "Authorization": f"Bearer {tok['access_token']}",
+            "Authorization": f"Bearer {access_token}",
             "developer-token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"].strip(),
+            "Content-Type": "application/json",
         }
         login_cid = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", "").strip()
         if login_cid:
             headers["login-customer-id"] = login_cid
+
+        # debug: test simpler endpoint first
+        r_list = requests.get(
+            "https://googleads.googleapis.com/v19/customers:listAccessibleCustomers",
+            headers=headers,
+            timeout=15,
+        )
+        print(f"[Google Ads listCustomers] status={r_list.status_code} body={r_list.text[:200]}")
+
         query = (
             f"SELECT metrics.cost_micros, metrics.impressions, metrics.clicks,"
             f" metrics.conversions, metrics.conversions_value"
             f" FROM customer"
             f" WHERE segments.date BETWEEN '{since}' AND '{until}'"
         )
-        with httpx.Client(http2=True, timeout=30) as client:
-            r = client.post(
-                f"https://googleads.googleapis.com/v18/customers/{customer_id}/googleAds:search",
-                headers=headers,
-                json={"query": query},
-            )
-        print(f"[Google Ads debug] status={r.status_code} body={r.text[:300]}")
+        r = requests.post(
+            f"https://googleads.googleapis.com/v19/customers/{customer_id}/googleAds:search",
+            headers=headers,
+            json={"query": query},
+            timeout=30,
+        )
+        print(f"[Google Ads search] status={r.status_code} body={r.text[:300]}")
         data = r.json()
         if "error" in data:
             raise RuntimeError(data["error"].get("message", str(data["error"])))
