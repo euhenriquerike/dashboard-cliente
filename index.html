@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
+<html lang="pt-BR"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NOMAD — Dashboard</title>
@@ -10,102 +9,236 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 header{background:#111;color:#fff;padding:20px 32px;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:18px;font-weight:600;letter-spacing:-.01em}
 .upd{font-size:12px;color:#777}
-main{max-width:1200px;margin:0 auto;padding:28px 32px}
-.tabs{display:flex;gap:8px;margin-bottom:28px}
+main{max-width:1280px;margin:0 auto;padding:28px 32px}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .tab{padding:8px 18px;border-radius:20px;font-size:13px;cursor:pointer;border:none;background:#e5e5ea;color:#1d1d1f;font-weight:500;transition:background .15s,color .15s}
 .tab.active{background:#111;color:#fff}
+.vtabs{margin-bottom:24px}
+.vtabs .tab{font-size:12px;padding:6px 14px;background:#f2f2f7}
+.vtabs .tab.active{background:#555;color:#fff}
 .sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#86868b;margin:28px 0 14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:8px}
 .card{background:#fff;border-radius:12px;padding:18px 20px}
 .card.blue{background:#0055ff;color:#fff}
 .lbl{font-size:11px;color:#86868b;margin-bottom:8px}
 .card.blue .lbl{color:rgba(255,255,255,.65)}
-.val{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.val{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1}
 .sub{font-size:11px;color:#86868b;margin-top:5px}
 .card.blue .sub{color:rgba(255,255,255,.6)}
+.tscroll{overflow-x:auto;margin-bottom:8px}
 table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
-th{text-align:left;padding:11px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#86868b;border-bottom:1px solid #f2f2f7}
-td{padding:14px 16px;font-size:13px;border-bottom:1px solid #f2f2f7}
+th{text-align:left;padding:11px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#86868b;border-bottom:1px solid #f2f2f7;white-space:nowrap}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid #f2f2f7;white-space:nowrap}
+td.name{max-width:220px;overflow:hidden;text-overflow:ellipsis}
 tr.total td{border-bottom:none;font-weight:700;background:#f5f5f7}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.empty{color:#86868b;padding:20px;font-size:13px;display:block}
 footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
-@media(max-width:640px){main{padding:20px 16px}header{padding:16px}th,td{padding:10px 12px}table{font-size:12px}}
+@media(max-width:640px){main{padding:20px 16px}header{padding:16px}th,td{padding:9px 10px}table{font-size:12px}.val{font-size:18px}}
 </style>
 </head>
 <body>
 <header>
   <h1>NOMAD</h1>
-  <span class="upd">Atualizado 05/05/2026 02:14</span>
+  <span class="upd">Atualizado 05/05/2026 10:29</span>
 </header>
 <main>
-  <div class="tabs">
-    <button class="tab active" onclick="render('ontem',this)">Ontem</button>
-    <button class="tab" onclick="render('mtd',this)">Mês até hoje</button>
+  <div class="tabs" id="ptabs">
+    <button class="tab active" onclick="setPeriod('ontem',this)">Ontem</button>
+    <button class="tab" onclick="setPeriod('mtd',this)">Mês até hoje</button>
   </div>
-  <p class="sec">Investimento e Retorno</p>
-  <div class="grid" id="kpi"></div>
-  <p class="sec">Por Plataforma</p>
-  <table>
-    <thead><tr>
-      <th>Plataforma</th><th>Investido</th><th>Cliques</th><th>Impressões</th>
-      <th>Conversões</th><th>Receita</th><th>CPA</th><th>ROAS</th>
-    </tr></thead>
-    <tbody id="ptable"></tbody>
-  </table>
-  <p class="sec">Site — Google Analytics 4</p>
-  <div class="grid" id="ga4"></div>
-  <p class="sec">Pedidos — Loja</p>
-  <div class="grid" id="wc"></div>
+  <div class="tabs vtabs">
+    <button class="tab vtab active" onclick="setView('overview',this)">Visão Geral</button>
+    <button class="tab vtab" onclick="setView('campaigns',this)">Campanhas</button>
+    <button class="tab vtab" onclick="setView('adsets',this)">Conjuntos</button>
+    <button class="tab vtab" onclick="setView('ads',this)">Anúncios</button>
+    <button class="tab vtab" onclick="setView('geo',this)">Geográfico</button>
+  </div>
+
+  <div id="v-overview">
+    <p class="sec">KPIs</p>
+    <div class="grid" id="kpi"></div>
+    <p class="sec">Por Plataforma</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr>
+          <th>Plataforma</th><th>Investido</th><th>Impressões</th><th>Cliques</th>
+          <th>CPM</th><th>CPC</th><th>CTR</th>
+          <th>Conversões</th><th>Receita</th><th>CPA</th><th>ROAS</th>
+        </tr></thead>
+        <tbody id="ptable"></tbody>
+      </table>
+    </div>
+    <p class="sec">Site — Google Analytics 4</p>
+    <div class="grid" id="ga4"></div>
+    <p class="sec">Pedidos — Loja</p>
+    <div class="grid" id="wc"></div>
+  </div>
+
+  <div id="v-campaigns" style="display:none">
+    <p class="sec">Meta Ads — Campanhas</p>
+    <div class="tscroll" id="c-meta"></div>
+    <p class="sec">Google Ads — Campanhas</p>
+    <div class="tscroll" id="c-google"></div>
+  </div>
+
+  <div id="v-adsets" style="display:none">
+    <p class="sec">Meta Ads — Conjuntos de Anúncios</p>
+    <div class="tscroll" id="as-meta"></div>
+    <p class="sec">Google Ads — Grupos de Anúncios</p>
+    <div class="tscroll" id="as-google"></div>
+  </div>
+
+  <div id="v-ads" style="display:none">
+    <p class="sec">Meta Ads — Anúncios</p>
+    <div class="tscroll" id="ad-meta"></div>
+    <p class="sec">Google Ads — Anúncios</p>
+    <div class="tscroll" id="ad-google"></div>
+  </div>
+
+  <div id="v-geo" style="display:none">
+    <p class="sec">Meta Ads — Por País</p>
+    <div class="tscroll" id="geo-meta"></div>
+    <p class="sec">Google Ads — Por País</p>
+    <div class="tscroll" id="geo-google"></div>
+  </div>
 </main>
-<footer>Dashboard gerado automaticamente · 05/05/2026 02:14</footer>
+<footer>Dashboard gerado automaticamente · 05/05/2026 10:29</footer>
 <script>
-const D = {"ontem": {"meta": {"spend": 176.54, "impressions": 7562, "clicks": 114, "reach": 6852, "cpc": 1.548596, "ctr": 1.507538, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0}, "google_ads": {"spend": 207.176452, "impressions": 3328, "clicks": 157, "cpc": 1.31959523566879, "ctr": 4.717548076923077, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0}, "ga4": {"sessions": 209, "users": 179, "transactions": 1, "revenue": 338.42, "conversion_rate": 14.832535885167463}, "woocommerce": {"orders": 0, "revenue": 0, "avg_ticket": 0}}, "mtd": {"meta": {"spend": 1067.37, "impressions": 37153, "clicks": 431, "reach": 32817, "cpc": 2.476497, "ctr": 1.160068, "purchases": 3, "revenue": 4844.85, "cpa": 355.78999999999996, "roas": 4.539053936310746}, "google_ads": {"spend": 932.227153, "impressions": 17045, "clicks": 651, "cpc": 1.43199255453149, "ctr": 3.8193018480492813, "conversions": 2, "revenue": 3032.768362356, "cpa": 466.1135765, "roas": 3.253250404256354}, "ga4": {"sessions": 928, "users": 703, "transactions": 6, "revenue": 1897.19, "conversion_rate": 12.176724137931034}, "woocommerce": {"orders": 5, "revenue": 1466.75, "avg_ticket": 293.35}}};
-const brl = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const D = {"ontem": {"meta": {"spend": 181.57, "impressions": 7603, "clicks": 116, "reach": 6913, "cpm": 23.881363, "cpc": 1.565259, "ctr": 1.525714, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "currency": "BRL"}, "google_ads": {"spend": 209.640741, "impressions": 3404, "clicks": 165, "cpm": 61.5865866627497, "cpc": 1.2705499454545455, "ctr": 4.847238542890716, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "currency": "BRL"}, "meta_campaigns": [{"spend": 181.57, "impressions": 7603, "clicks": 116, "reach": 6913, "cpm": 23.881363, "cpc": 1.565259, "ctr": 1.525714, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Vendas - Abr/26"}], "meta_adsets": [{"spend": 82.29, "impressions": 1343, "clicks": 95, "reach": 887, "cpm": 61.273269, "cpc": 0.866211, "ctr": 7.073716, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "ASC - Varios Paises - Posicionamento+ - Catálogo", "campaign": "Vendas - Abr/26"}, {"spend": 58.05, "impressions": 3478, "clicks": 5, "reach": 3365, "cpm": 16.690627, "cpc": 11.61, "ctr": 0.143761, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "ASC - Varios Paises - Reels", "campaign": "Vendas - Abr/26"}, {"spend": 41.23, "impressions": 2782, "clicks": 16, "reach": 2745, "cpm": 14.820273, "cpc": 2.576875, "ctr": 0.575126, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "ASC - Varios Paises - Posicionamento+", "campaign": "Vendas - Abr/26"}], "meta_ads": [{"spend": 82.29, "impressions": 1343, "clicks": 95, "reach": 887, "cpm": 61.273269, "cpc": 0.866211, "ctr": 7.073716, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Catalogo - 1 - Pearl & Caviar", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+ - Catálogo"}, {"spend": 58.05, "impressions": 3478, "clicks": 5, "reach": 3365, "cpm": 16.690627, "cpc": 11.61, "ctr": 0.143761, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Vídeo - 1", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Reels"}, {"spend": 41.04, "impressions": 2779, "clicks": 16, "reach": 2742, "cpm": 14.767902, "cpc": 2.565, "ctr": 0.575747, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Anúncio - 2", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+"}, {"spend": 0.19, "impressions": 3, "clicks": 0, "reach": 2, "cpm": 63.333333, "cpc": 0.0, "ctr": 0.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Carrossel - 1", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+"}], "google_campaigns": [{"spend": 94.856653, "impressions": 210, "clicks": 55, "cpm": 451.6983476190476, "cpc": 1.724666418181818, "ctr": 26.190476190476193, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Search - Brand - BR", "status": "ENABLED"}, {"spend": 85.214422, "impressions": 2632, "clicks": 77, "cpm": 32.376300151975684, "cpc": 1.1066808051948052, "ctr": 2.925531914893617, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "PMAX - Shopping - BR - Varios Paises", "status": "ENABLED"}, {"spend": 29.569666, "impressions": 562, "clicks": 33, "cpm": 52.6150640569395, "cpc": 0.8960504848484849, "ctr": 5.871886120996441, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "PMAX - Shopping - Athens, Limassol, Heraklion", "status": "ENABLED"}], "google_adgroups": [{"spend": 94.856653, "impressions": 210, "clicks": 55, "cpm": 451.6983476190476, "cpc": 1.724666418181818, "ctr": 26.190476190476193, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "[1] - Genérico", "status": "ENABLED", "campaign": "Search - Brand - BR"}], "google_ads_breakdown": [{"spend": 94.856653, "impressions": 210, "clicks": 55, "cpm": 451.6983476190476, "cpc": 1.724666418181818, "ctr": 26.190476190476193, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "805807304331", "status": "ENABLED", "campaign": "Search - Brand - BR", "adset": "[1] - Genérico"}], "meta_geo": [{"spend": 106.09, "impressions": 6210, "clicks": 21, "reach": 0, "cpm": 17.083736, "cpc": 5.051905, "ctr": 0.338164, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "US"}, {"spend": 70.92, "impressions": 1314, "clicks": 88, "reach": 0, "cpm": 53.972603, "cpc": 0.805909, "ctr": 6.697108, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "GR"}, {"spend": 2.33, "impressions": 36, "clicks": 1, "reach": 0, "cpm": 64.722222, "cpc": 2.33, "ctr": 2.777778, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ES"}, {"spend": 0.99, "impressions": 31, "clicks": 1, "reach": 0, "cpm": 31.935484, "cpc": 0.99, "ctr": 3.225806, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "IT"}, {"spend": 0.8, "impressions": 2, "clicks": 0, "reach": 0, "cpm": 400.0, "cpc": 0.0, "ctr": 0.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "AT"}, {"spend": 0.44, "impressions": 10, "clicks": 5, "reach": 0, "cpm": 44.0, "cpc": 0.088, "ctr": 50.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "PT"}], "google_geo": [{"spend": 177.896917, "impressions": 2633, "clicks": 134, "cpm": 67.56434371439423, "cpc": 1.3275889328358208, "ctr": 5.089251804025826, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ID:2300"}, {"spend": 12.221266, "impressions": 591, "clicks": 18, "cpm": 20.67896108291032, "cpc": 0.6789592222222223, "ctr": 3.0456852791878175, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "Itália"}, {"spend": 12.118645, "impressions": 15, "clicks": 2, "cpm": 807.9096666666668, "cpc": 6.0593225, "ctr": 13.333333333333334, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "EUA"}, {"spend": 3.483342, "impressions": 38, "clicks": 7, "cpm": 91.6668947368421, "cpc": 0.4976202857142857, "ctr": 18.421052631578945, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "Espanha"}, {"spend": 2.238241, "impressions": 30, "clicks": 2, "cpm": 74.60803333333334, "cpc": 1.1191205, "ctr": 6.666666666666667, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "Alemanha"}, {"spend": 1.57, "impressions": 2, "clicks": 1, "cpm": 785.0, "cpc": 1.57, "ctr": 50.0, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ID:2040"}, {"spend": 0.11233, "impressions": 95, "clicks": 1, "cpm": 1.1824210526315788, "cpc": 0.11233, "ctr": 1.0526315789473684, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ID:2196"}], "ga4": {"sessions": 213, "users": 183, "transactions": 1, "revenue": 338.42, "conversion_rate": 14.553990610328638}, "woocommerce": {"orders": 0, "revenue": 0, "avg_ticket": 0}}, "mtd": {"meta": {"spend": 1104.1, "impressions": 37647, "clicks": 451, "reach": 33084, "cpm": 29.327702, "cpc": 2.448115, "ctr": 1.197971, "purchases": 3, "revenue": 4844.85, "cpa": 368.0333333333333, "roas": 4.388053618331673, "currency": "BRL"}, "google_ads": {"spend": 967.98912, "impressions": 18350, "clicks": 696, "cpm": 52.75145068119891, "cpc": 1.3907889655172414, "ctr": 3.7929155313351495, "conversions": 2, "revenue": 3032.768362356, "cpa": 483.99456, "roas": 3.133060382286115, "currency": "BRL"}, "meta_campaigns": [{"spend": 1104.1, "impressions": 37647, "clicks": 451, "reach": 33084, "cpm": 29.327702, "cpc": 2.448115, "ctr": 1.197971, "purchases": 3, "revenue": 4844.85, "cpa": 368.0333333333333, "roas": 4.388053618331673, "name": "Vendas - Abr/26"}], "meta_adsets": [{"spend": 540.17, "impressions": 23412, "clicks": 63, "reach": 21812, "cpm": 23.072356, "cpc": 8.574127, "ctr": 0.269093, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "ASC - Varios Paises - Reels", "campaign": "Vendas - Abr/26"}, {"spend": 293.15, "impressions": 10239, "clicks": 145, "reach": 9466, "cpm": 28.630726, "cpc": 2.021724, "ctr": 1.416154, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "ASC - Varios Paises - Posicionamento+", "campaign": "Vendas - Abr/26"}, {"spend": 270.76, "impressions": 3995, "clicks": 243, "reach": 2147, "cpm": 67.774718, "cpc": 1.114239, "ctr": 6.082603, "purchases": 3, "revenue": 4844.85, "cpa": 90.25333333333333, "roas": 17.893521938247897, "name": "ASC - Varios Paises - Posicionamento+ - Catálogo", "campaign": "Vendas - Abr/26"}], "meta_ads": [{"spend": 540.17, "impressions": 23412, "clicks": 63, "reach": 21812, "cpm": 23.072356, "cpc": 8.574127, "ctr": 0.269093, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Vídeo - 1", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Reels"}, {"spend": 275.02, "impressions": 10073, "clicks": 128, "reach": 9391, "cpm": 27.30269, "cpc": 2.148594, "ctr": 1.270724, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Anúncio - 2", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+"}, {"spend": 270.76, "impressions": 3995, "clicks": 243, "reach": 2147, "cpm": 67.774718, "cpc": 1.114239, "ctr": 6.082603, "purchases": 3, "revenue": 4844.85, "cpa": 90.25333333333333, "roas": 17.893521938247897, "name": "Catalogo - 1 - Pearl & Caviar", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+ - Catálogo"}, {"spend": 12.94, "impressions": 129, "clicks": 13, "reach": 97, "cpm": 100.310078, "cpc": 0.995385, "ctr": 10.077519, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Carrossel - 1", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+"}, {"spend": 5.21, "impressions": 38, "clicks": 4, "reach": 30, "cpm": 137.105263, "cpc": 1.3025, "ctr": 10.526316, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "Anúncio - 1", "campaign": "Vendas - Abr/26", "adset": "ASC - Varios Paises - Posicionamento+"}], "google_campaigns": [{"spend": 476.440001, "impressions": 14630, "clicks": 374, "cpm": 32.56596042378674, "cpc": 1.2739037459893048, "ctr": 2.556390977443609, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "PMAX - Shopping - BR - Varios Paises", "status": "ENABLED"}, {"spend": 377.500674, "impressions": 1006, "clicks": 201, "cpm": 375.24917892644135, "cpc": 1.8781128059701493, "ctr": 19.980119284294233, "conversions": 2, "revenue": 3032.768362356, "cpa": 188.750337, "roas": 8.033809132632172, "name": "Search - Brand - BR", "status": "ENABLED"}, {"spend": 114.048445, "impressions": 2714, "clicks": 121, "cpm": 42.02227155490051, "cpc": 0.942549132231405, "ctr": 4.458364038319823, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "name": "PMAX - Shopping - Athens, Limassol, Heraklion", "status": "ENABLED"}], "google_adgroups": [{"spend": 377.500674, "impressions": 1006, "clicks": 201, "cpm": 375.24917892644135, "cpc": 1.8781128059701493, "ctr": 19.980119284294233, "conversions": 2, "revenue": 3032.768362356, "cpa": 188.750337, "roas": 8.033809132632172, "name": "[1] - Genérico", "status": "ENABLED", "campaign": "Search - Brand - BR"}], "google_ads_breakdown": [{"spend": 377.500674, "impressions": 1006, "clicks": 201, "cpm": 375.24917892644135, "cpc": 1.8781128059701493, "ctr": 19.980119284294233, "conversions": 2, "revenue": 3032.768362356, "cpa": 188.750337, "roas": 8.033809132632172, "name": "805807304331", "status": "ENABLED", "campaign": "Search - Brand - BR", "adset": "[1] - Genérico"}], "meta_geo": [{"spend": 654.471178, "impressions": 30562, "clicks": 103, "reach": 0, "cpm": 21.41454, "cpc": 6.354089, "ctr": 0.33702, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "US"}, {"spend": 422.249151, "impressions": 6592, "clicks": 320, "reach": 0, "cpm": 64.054786, "cpc": 1.319529, "ctr": 4.854369, "purchases": 3, "revenue": 4844.85, "cpa": 140.749717, "roas": 11.47391294577168, "country": "GR"}, {"spend": 14.375078, "impressions": 233, "clicks": 13, "reach": 0, "cpm": 61.695612, "cpc": 1.105775, "ctr": 5.579399, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ES"}, {"spend": 10.633756, "impressions": 241, "clicks": 9, "reach": 0, "cpm": 44.12347, "cpc": 1.181528, "ctr": 3.73444, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "IT"}, {"spend": 1.240438, "impressions": 6, "clicks": 0, "reach": 0, "cpm": 206.739693, "cpc": 0.0, "ctr": 0.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "AT"}, {"spend": 0.540191, "impressions": 2, "clicks": 0, "reach": 0, "cpm": 270.095406, "cpc": 0.0, "ctr": 0.0, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "DE"}, {"spend": 0.500177, "impressions": 11, "clicks": 6, "reach": 0, "cpm": 45.470607, "cpc": 0.083363, "ctr": 54.545455, "purchases": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "PT"}], "google_geo": [{"spend": 765.594234, "impressions": 14369, "clicks": 540, "cpm": 53.28096833460923, "cpc": 1.4177671, "ctr": 3.7580903333565314, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ID:2300"}, {"spend": 53.795386, "impressions": 318, "clicks": 34, "cpm": 169.16788050314466, "cpc": 1.5822172352941177, "ctr": 10.69182389937107, "conversions": 2, "revenue": 3032.768362356, "cpa": 26.897693, "roas": 56.37599407421298, "country": "Alemanha"}, {"spend": 50.744906, "impressions": 272, "clicks": 10, "cpm": 186.5621544117647, "cpc": 5.0744906, "ctr": 3.6764705882352944, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "EUA"}, {"spend": 39.275791, "impressions": 1938, "clicks": 47, "cpm": 20.266146026831784, "cpc": 0.8356551276595744, "ctr": 2.4251805985552117, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "Itália"}, {"spend": 37.711735, "impressions": 514, "clicks": 32, "cpm": 73.36913424124513, "cpc": 1.17849171875, "ctr": 6.22568093385214, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "Espanha"}, {"spend": 18.537068, "impressions": 911, "clicks": 30, "cpm": 20.348043907793635, "cpc": 0.6179022666666667, "ctr": 3.293084522502744, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ID:2196"}, {"spend": 2.33, "impressions": 28, "clicks": 3, "cpm": 83.21428571428571, "cpc": 0.7766666666666667, "ctr": 10.714285714285714, "conversions": 0, "revenue": 0.0, "cpa": 0, "roas": 0.0, "country": "ID:2040"}], "ga4": {"sessions": 978, "users": 727, "transactions": 7, "revenue": 2187.6099990000002, "conversion_rate": 12.678936605316974}, "woocommerce": {"orders": 6, "revenue": 1757.17, "avg_ticket": 292.8616666666667}}};
+let curPeriod = 'ontem', curView = 'overview';
+
+const fmtBRL = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtEUR = v => '€ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt = (v, cur) => cur === 'EUR' ? fmtEUR(v) : fmtBRL(v);
 const num = v => Math.round(+v||0).toLocaleString('pt-BR');
-const xr  = v => (+v||0).toFixed(2) + 'x';
+const xr = v => (+v||0).toFixed(2) + 'x';
 const pct = v => (+v||0).toFixed(2) + '%';
-const card = (l,v,s,blue) => `<div class="card${blue?' blue':''}"><div class="lbl">${l}</div><div class="val">${v}</div>${s?`<div class="sub">${s}</div>`:''}</div>`;
-const prow = (color,name,d,conv) => `<tr>
-  <td><span class="dot" style="background:${color}"></span>${name}</td>
-  <td>${brl(d.spend)}</td><td>${num(d.clicks)}</td><td>${num(d.impressions)}</td>
-  <td>${num(conv)}</td><td>${brl(d.revenue)}</td><td>${brl(d.cpa)}</td><td>${xr(d.roas)}</td></tr>`;
-function render(p, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  const {meta:m, google_ads:g, ga4, woocommerce:wc} = D[p];
-  const ts = m.spend + g.spend;
-  const tc = m.clicks + g.clicks;
-  const ti = m.impressions + g.impressions;
-  const tconv = (m.purchases||0) + (g.conversions||0);
-  const tr = m.revenue + g.revenue;
-  const tcpa = tconv ? ts/tconv : 0;
-  const troas = ts ? tr/ts : 0;
+const card = (l, v, s, blue) => `<div class="card${blue?' blue':''}"><div class="lbl">${l}</div><div class="val">${v}</div>${s?`<div class="sub">${s}</div>`:''}</div>`;
+
+function setPeriod(p, btn) {
+  document.querySelectorAll('#ptabs .tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  curPeriod = p;
+  renderView();
+}
+
+function setView(v, btn) {
+  document.querySelectorAll('.vtab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('[id^="v-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('v-' + v).style.display = '';
+  curView = v;
+  renderView();
+}
+
+function renderView() {
+  const data = D[curPeriod];
+  ({overview: renderOverview, campaigns: renderCampaigns, adsets: renderAdsets, ads: renderAds, geo: renderGeo})[curView](data);
+}
+
+function renderOverview(data) {
+  const {meta: m, google_ads: g, ga4, woocommerce: wc} = data;
+  const mCur = m.currency || 'BRL', gCur = g.currency || 'BRL';
+  const sameCur = mCur === gCur;
+  const blend = v => fmt(v, sameCur ? mCur : 'BRL');
+  const ts = m.spend + g.spend, tc = m.clicks + g.clicks, ti = m.impressions + g.impressions;
+  const tconv = (m.purchases || 0) + (g.conversions || 0), tr = m.revenue + g.revenue;
+
   document.getElementById('kpi').innerHTML = [
-    card('Total Investido', brl(ts), 'Meta + Google Ads', true),
-    card('Receita (Ads)', brl(tr), 'atribuição das plataformas'),
-    card('ROAS Blendado', xr(troas), 'retorno sobre investimento'),
-    card('CPA Blendado', brl(tcpa), 'custo por conversão'),
+    card('Total Investido', blend(ts), sameCur ? 'Meta + Google Ads' : `Meta (${mCur}) + Google (${gCur})`, true),
+    card('Receita (Ads)', blend(tr), 'atribuição das plataformas'),
+    card('ROAS Blendado', xr(ts ? tr/ts : 0), 'retorno sobre investimento'),
+    card('CPA Blendado', blend(tconv ? ts/tconv : 0), 'custo por conversão'),
+    card('CPM Blendado', blend(ti ? ts/ti*1000 : 0), 'custo por mil impressões'),
+    card('CPC Blendado', blend(tc ? ts/tc : 0), 'custo por clique'),
+    card('CTR Blendado', pct(ti ? tc/ti*100 : 0), 'taxa de clique'),
     card('Conversões', num(tconv), 'compras atribuídas'),
-    card('Cliques Totais', num(tc), 'Meta + Google Ads'),
+    card('Visitas (GA4)', num(ga4.sessions), 'sessões no site'),
+    card('Custo por Visita', blend(ga4.sessions ? ts/ga4.sessions : 0), 'investimento / sessões GA4'),
+    card('Connect Rate', pct(tc ? ga4.sessions/tc*100 : 0), 'sessões GA4 / cliques nos ads'),
+    card('Taxa de Conversão', pct(ga4.conversion_rate), 'GA4 — sessão → compra'),
   ].join('');
+
+  const prow = (color, name, d, conv, cur) => `<tr>
+    <td><span class="dot" style="background:${color}"></span>${name}&nbsp;<small style="color:#86868b;font-size:10px">${cur}</small></td>
+    <td>${fmt(d.spend,cur)}</td><td>${num(d.impressions)}</td><td>${num(d.clicks)}</td>
+    <td>${fmt(d.cpm,cur)}</td><td>${fmt(d.cpc,cur)}</td><td>${pct(d.ctr)}</td>
+    <td>${num(conv)}</td><td>${fmt(d.revenue,cur)}</td><td>${fmt(d.cpa,cur)}</td><td>${xr(d.roas)}</td>
+  </tr>`;
+
   document.getElementById('ptable').innerHTML =
-    prow('#0866ff','Meta Ads', m, m.purchases||0) +
-    prow('#ea4335','Google Ads', g, g.conversions||0) +
-    `<tr class="total"><td>Total</td><td>${brl(ts)}</td><td>${num(tc)}</td><td>${num(ti)}</td><td>${num(tconv)}</td><td>${brl(tr)}</td><td>${brl(tcpa)}</td><td>${xr(troas)}</td></tr>`;
+    prow('#0866ff','Meta Ads', m, m.purchases||0, mCur) +
+    prow('#ea4335','Google Ads', g, g.conversions||0, gCur) +
+    `<tr class="total"><td>Total</td>
+    <td>${blend(ts)}</td><td>${num(ti)}</td><td>${num(tc)}</td>
+    <td>${blend(ti?ts/ti*1000:0)}</td><td>${blend(tc?ts/tc:0)}</td><td>${pct(ti?tc/ti*100:0)}</td>
+    <td>${num(tconv)}</td><td>${blend(tr)}</td><td>${blend(tconv?ts/tconv:0)}</td><td>${xr(ts?tr/ts:0)}</td>
+    </tr>`;
+
   document.getElementById('ga4').innerHTML = [
-    card('Sessões', num(ga4.sessions), ''),
-    card('Usuários', num(ga4.users), ''),
-    card('Transações', num(ga4.transactions), ''),
-    card('Receita GA4', brl(ga4.revenue), ''),
-    card('Taxa de Conversão', pct(ga4.conversion_rate), ''),
+    card('Sessões', num(ga4.sessions)),
+    card('Usuários', num(ga4.users)),
+    card('Transações', num(ga4.transactions)),
+    card('Receita GA4', fmtBRL(ga4.revenue)),
+    card('Taxa de Conversão', pct(ga4.conversion_rate)),
   ].join('');
+
   document.getElementById('wc').innerHTML = [
-    card('Pedidos', num(wc.orders), ''),
-    card('Receita Loja', brl(wc.revenue), ''),
-    card('Ticket Médio', brl(wc.avg_ticket), ''),
+    card('Pedidos', num(wc.orders)),
+    card('Receita Loja', fmtBRL(wc.revenue)),
+    card('Ticket Médio', fmtBRL(wc.avg_ticket)),
   ].join('');
 }
-render('ontem');
+
+function brkTable(rows, cur, showCamp, showAdset) {
+  if (!rows || !rows.length) return '<span class="empty">Sem dados para o período</span>';
+  const hdrs = ['Nome', ...(showCamp?['Campanha']:[]), ...(showAdset?['Conjunto']:[]),
+    'Investido','Impressões','Cliques','CPM','CPC','CTR','Conv.','Receita','CPA','ROAS'];
+  const getConv = d => d.conversions !== undefined ? d.conversions : (d.purchases || 0);
+  const trs = rows.map(d => `<tr>
+    <td class="name" title="${d.name}">${d.name}</td>
+    ${showCamp ? `<td>${d.campaign||'—'}</td>` : ''}
+    ${showAdset ? `<td>${d.adset||'—'}</td>` : ''}
+    <td>${fmt(d.spend,cur)}</td><td>${num(d.impressions)}</td><td>${num(d.clicks)}</td>
+    <td>${fmt(d.cpm,cur)}</td><td>${fmt(d.cpc,cur)}</td><td>${pct(d.ctr)}</td>
+    <td>${num(getConv(d))}</td><td>${fmt(d.revenue,cur)}</td><td>${fmt(d.cpa,cur)}</td><td>${xr(d.roas)}</td>
+  </tr>`).join('');
+  return `<table><thead><tr>${hdrs.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function geoTable(rows, cur) {
+  if (!rows || !rows.length) return '<span class="empty">Sem dados para o período</span>';
+  const getConv = d => d.conversions !== undefined ? d.conversions : (d.purchases || 0);
+  const trs = rows.map(d => `<tr>
+    <td>${d.country}</td><td>${fmt(d.spend,cur)}</td><td>${num(d.impressions)}</td>
+    <td>${num(d.clicks)}</td><td>${fmt(d.cpm,cur)}</td><td>${fmt(d.cpc,cur)}</td>
+    <td>${pct(d.ctr)}</td><td>${num(getConv(d))}</td>
+  </tr>`).join('');
+  return `<table><thead><tr>
+    <th>País</th><th>Investido</th><th>Impressões</th><th>Cliques</th>
+    <th>CPM</th><th>CPC</th><th>CTR</th><th>Conversões</th>
+  </tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function renderCampaigns(data) {
+  document.getElementById('c-meta').innerHTML = brkTable(data.meta_campaigns, data.meta.currency||'BRL', false, false);
+  document.getElementById('c-google').innerHTML = brkTable(data.google_campaigns, data.google_ads.currency||'BRL', false, false);
+}
+function renderAdsets(data) {
+  document.getElementById('as-meta').innerHTML = brkTable(data.meta_adsets, data.meta.currency||'BRL', true, false);
+  document.getElementById('as-google').innerHTML = brkTable(data.google_adgroups, data.google_ads.currency||'BRL', true, false);
+}
+function renderAds(data) {
+  document.getElementById('ad-meta').innerHTML = brkTable(data.meta_ads, data.meta.currency||'BRL', true, true);
+  document.getElementById('ad-google').innerHTML = brkTable(data.google_ads_breakdown, data.google_ads.currency||'BRL', true, true);
+}
+function renderGeo(data) {
+  document.getElementById('geo-meta').innerHTML = geoTable(data.meta_geo, data.meta.currency||'BRL');
+  document.getElementById('geo-google').innerHTML = geoTable(data.google_geo, data.google_ads.currency||'BRL');
+}
+
+renderView();
 </script>
 </body>
 </html>
