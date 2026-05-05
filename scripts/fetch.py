@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, RunReportRequest
 from google.ads.googleads.client import GoogleAdsClient
-from google.auth.transport.requests import Request
-from google.oauth2 import service_account, credentials as oauth2_credentials
+from google.oauth2 import service_account
 from woocommerce import API as WcAPI
 
 
@@ -93,44 +92,81 @@ def fetch_google_ads(since, until):
         return {"spend": 0, "impressions": 0, "clicks": 0, "cpc": 0, "ctr": 0, "conversions": 0, "revenue": 0, "cpa": 0, "roas": 0}
 
 
+def _ga4_via_rest(since, until, access_token):
+    prop = os.environ["GA4_PROPERTY_ID"].strip()
+    r = requests.post(
+        f"https://analyticsdata.googleapis.com/v1beta/properties/{prop}:runReport",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "dateRanges": [{"startDate": since, "endDate": until}],
+            "metrics": [
+                {"name": "sessions"},
+                {"name": "totalUsers"},
+                {"name": "transactions"},
+                {"name": "purchaseRevenue"},
+                {"name": "sessionConversionRate"},
+            ],
+        },
+        timeout=30,
+    )
+    data = r.json()
+    if "error" in data:
+        raise RuntimeError(data["error"].get("message", str(data["error"])))
+    rows = data.get("rows", [])
+    if not rows:
+        return {"sessions": 0, "users": 0, "transactions": 0, "revenue": 0.0, "conversion_rate": 0.0}
+    v = [mv["value"] for mv in rows[0]["metricValues"]]
+    return {
+        "sessions": int(v[0]),
+        "users": int(v[1]),
+        "transactions": int(v[2]),
+        "revenue": float(v[3]),
+        "conversion_rate": float(v[4]) * 100,
+    }
+
+
 def fetch_ga4(since, until):
     try:
-        if os.environ.get("GA4_REFRESH_TOKEN"):
-            creds = oauth2_credentials.Credentials(
-                token=None,
-                refresh_token=os.environ["GA4_REFRESH_TOKEN"],
-                token_uri="https://oauth2.googleapis.com/token",
-                client_id=os.environ["GOOGLE_ADS_CLIENT_ID"],
-                client_secret=os.environ["GOOGLE_ADS_CLIENT_SECRET"],
-            )
-            creds.refresh(Request())
+        refresh_token = os.environ.get("GA4_REFRESH_TOKEN")
+        if refresh_token:
+            tok = requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "refresh_token": refresh_token,
+                    "client_id": os.environ["GOOGLE_ADS_CLIENT_ID"],
+                    "client_secret": os.environ["GOOGLE_ADS_CLIENT_SECRET"],
+                    "grant_type": "refresh_token",
+                },
+                timeout=15,
+            ).json()
+            return _ga4_via_rest(since, until, tok["access_token"])
         else:
             creds = service_account.Credentials.from_service_account_info(
                 json.loads(os.environ["GA4_CREDENTIALS_JSON"]),
                 scopes=["https://www.googleapis.com/auth/analytics.readonly"],
             )
-        client = BetaAnalyticsDataClient(credentials=creds)
-        resp = client.run_report(RunReportRequest(
-            property=f"properties/{os.environ['GA4_PROPERTY_ID']}",
-            date_ranges=[DateRange(start_date=since, end_date=until)],
-            metrics=[
-                Metric(name="sessions"),
-                Metric(name="totalUsers"),
-                Metric(name="transactions"),
-                Metric(name="purchaseRevenue"),
-                Metric(name="sessionConversionRate"),
-            ],
-        ))
-        if not resp.rows:
-            return {"sessions": 0, "users": 0, "transactions": 0, "revenue": 0.0, "conversion_rate": 0.0}
-        v = [mv.value for mv in resp.rows[0].metric_values]
-        return {
-            "sessions": int(v[0]),
-            "users": int(v[1]),
-            "transactions": int(v[2]),
-            "revenue": float(v[3]),
-            "conversion_rate": float(v[4]) * 100,
-        }
+            client = BetaAnalyticsDataClient(credentials=creds)
+            resp = client.run_report(RunReportRequest(
+                property=f"properties/{os.environ['GA4_PROPERTY_ID'].strip()}",
+                date_ranges=[DateRange(start_date=since, end_date=until)],
+                metrics=[
+                    Metric(name="sessions"),
+                    Metric(name="totalUsers"),
+                    Metric(name="transactions"),
+                    Metric(name="purchaseRevenue"),
+                    Metric(name="sessionConversionRate"),
+                ],
+            ))
+            if not resp.rows:
+                return {"sessions": 0, "users": 0, "transactions": 0, "revenue": 0.0, "conversion_rate": 0.0}
+            v = [mv.value for mv in resp.rows[0].metric_values]
+            return {
+                "sessions": int(v[0]),
+                "users": int(v[1]),
+                "transactions": int(v[2]),
+                "revenue": float(v[3]),
+                "conversion_rate": float(v[4]) * 100,
+            }
     except Exception as e:
         print(f"[GA4] {e}")
         return {"sessions": 0, "users": 0, "transactions": 0, "revenue": 0.0, "conversion_rate": 0.0}
