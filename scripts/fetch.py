@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, RunReportRequest
 from google.ads.googleads.client import GoogleAdsClient
-from google.oauth2 import service_account
+from google.oauth2 import service_account, credentials as oauth2_credentials
 from woocommerce import API as WcAPI
 
 
@@ -90,10 +90,19 @@ def fetch_google_ads(since, until):
 
 def fetch_ga4(since, until):
     try:
-        creds = service_account.Credentials.from_service_account_info(
-            json.loads(os.environ["GA4_CREDENTIALS_JSON"]),
-            scopes=["https://www.googleapis.com/auth/analytics.readonly"],
-        )
+        if os.environ.get("GA4_REFRESH_TOKEN"):
+            creds = oauth2_credentials.Credentials(
+                token=None,
+                refresh_token=os.environ["GA4_REFRESH_TOKEN"],
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=os.environ["GOOGLE_ADS_CLIENT_ID"],
+                client_secret=os.environ["GOOGLE_ADS_CLIENT_SECRET"],
+            )
+        else:
+            creds = service_account.Credentials.from_service_account_info(
+                json.loads(os.environ["GA4_CREDENTIALS_JSON"]),
+                scopes=["https://www.googleapis.com/auth/analytics.readonly"],
+            )
         client = BetaAnalyticsDataClient(credentials=creds)
         resp = client.run_report(RunReportRequest(
             property=f"properties/{os.environ['GA4_PROPERTY_ID']}",
@@ -208,7 +217,7 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
 <footer>Dashboard gerado automaticamente · __UPDATED_AT__</footer>
 <script>
 const D = __DATA_JSON__;
-const brl = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const brl = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const num = v => Math.round(+v||0).toLocaleString('pt-BR');
 const xr  = v => (+v||0).toFixed(2) + 'x';
 const pct = v => (+v||0).toFixed(2) + '%';
