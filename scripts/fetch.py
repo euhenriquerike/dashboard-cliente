@@ -129,7 +129,7 @@ def fetch_ga4(since, until):
     try:
         refresh_token = os.environ.get("GA4_REFRESH_TOKEN", "").strip()
         if refresh_token:
-            tok_resp = requests.post(
+            tok = requests.post(
                 "https://oauth2.googleapis.com/token",
                 data={
                     "refresh_token": refresh_token,
@@ -139,10 +139,9 @@ def fetch_ga4(since, until):
                 },
                 timeout=15,
             ).json()
-            print(f"[GA4 debug] token keys={list(tok_resp.keys())} error={tok_resp.get('error')}")
-            if "access_token" not in tok_resp:
-                raise RuntimeError(f"token exchange failed: {tok_resp}")
-            return _ga4_via_rest(since, until, tok_resp["access_token"])
+            if "access_token" not in tok:
+                raise RuntimeError(f"token exchange failed: {tok.get('error')}")
+            return _ga4_via_rest(since, until, tok["access_token"])
         else:
             creds = service_account.Credentials.from_service_account_info(
                 json.loads(os.environ["GA4_CREDENTIALS_JSON"]),
