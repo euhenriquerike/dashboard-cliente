@@ -4,6 +4,7 @@ import os
 import requests
 from datetime import datetime, timedelta
 
+from google.ads.googleads.client import GoogleAdsClient
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, RunReportRequest
 from google.oauth2 import service_account
@@ -48,50 +49,32 @@ def fetch_meta(since, until):
 
 def fetch_google_ads(since, until):
     try:
-        tok = requests.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "refresh_token": os.environ["GOOGLE_ADS_REFRESH_TOKEN"],
-                "client_id": os.environ["GOOGLE_ADS_CLIENT_ID"],
-                "client_secret": os.environ["GOOGLE_ADS_CLIENT_SECRET"],
-                "grant_type": "refresh_token",
-            },
-            timeout=15,
-        ).json()
-        if "access_token" not in tok:
-            raise RuntimeError(f"token exchange failed: {tok.get('error')}")
-        customer_id = os.environ["GOOGLE_ADS_CUSTOMER_ID"].replace("-", "")
-        headers = {
-            "Authorization": f"Bearer {tok['access_token']}",
-            "developer-token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"],
+        config = {
+            "developer_token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"],
+            "client_id": os.environ["GOOGLE_ADS_CLIENT_ID"],
+            "client_secret": os.environ["GOOGLE_ADS_CLIENT_SECRET"],
+            "refresh_token": os.environ["GOOGLE_ADS_REFRESH_TOKEN"],
+            "use_proto_plus": True,
         }
         login_cid = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", "")
         if login_cid:
-            headers["login-customer-id"] = login_cid
+            config["login_customer_id"] = login_cid
+        client = GoogleAdsClient.load_from_dict(config)
+        customer_id = os.environ["GOOGLE_ADS_CUSTOMER_ID"].replace("-", "")
+        svc = client.get_service("GoogleAdsService", transport="rest")
         query = (
             f"SELECT metrics.cost_micros, metrics.impressions, metrics.clicks,"
             f" metrics.conversions, metrics.conversions_value"
             f" FROM customer"
             f" WHERE segments.date BETWEEN '{since}' AND '{until}'"
         )
-        r = requests.post(
-            f"https://googleads.googleapis.com/v18/customers/{customer_id}/googleAds:search",
-            headers=headers,
-            json={"query": query},
-            timeout=30,
-        )
-        print(f"[Google Ads debug] status={r.status_code} body={r.text[:400]}")
-        data = r.json()
-        if "error" in data:
-            raise RuntimeError(data["error"].get("message", str(data["error"])))
         cost = imp = clicks = conv = rev = 0.0
-        for result in data.get("results", []):
-            m = result.get("metrics", {})
-            cost += int(m.get("costMicros", 0)) / 1_000_000
-            imp += int(m.get("impressions", 0))
-            clicks += int(m.get("clicks", 0))
-            conv += float(m.get("conversions", 0))
-            rev += float(m.get("conversionsValue", 0))
+        for row in svc.search(customer_id=customer_id, query=query):
+            cost += row.metrics.cost_micros / 1_000_000
+            imp += row.metrics.impressions
+            clicks += row.metrics.clicks
+            conv += row.metrics.conversions
+            rev += row.metrics.conversions_value
         return {
             "spend": cost,
             "impressions": int(imp),
