@@ -487,7 +487,10 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
 <main>
   <div class="tabs" id="ptabs">
     <button class="tab active" onclick="setPeriod('ontem',this)">Ontem</button>
+    <button class="tab" onclick="setPeriod('d7',this)">Últimos 7 dias</button>
+    <button class="tab" onclick="setPeriod('d30',this)">Últimos 30 dias</button>
     <button class="tab" onclick="setPeriod('mtd',this)">Mês até hoje</button>
+    <button class="tab" onclick="setPeriod('last_month',this)">Mês passado</button>
   </div>
   <div class="tabs vtabs">
     <button class="tab vtab active" onclick="setView('overview',this)">Visão Geral</button>
@@ -550,8 +553,8 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
 const D = __DATA_JSON__;
 let curPeriod = 'ontem', curView = 'overview';
 
-const fmtBRL = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtEUR = v => '€ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtBRL = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtEUR = v => '€ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt = (v, cur) => cur === 'EUR' ? fmtEUR(v) : fmtBRL(v);
 const num = v => Math.round(+v||0).toLocaleString('pt-BR');
 const xr = v => (+v||0).toFixed(2) + 'x';
@@ -588,7 +591,7 @@ function renderOverview(data) {
   const tconv = (m.purchases || 0) + (g.conversions || 0), tr = m.revenue + g.revenue;
 
   document.getElementById('kpi').innerHTML = [
-    card('Total Investido', blend(ts), sameCur ? 'Meta + Google Ads' : `Meta (${mCur}) + Google (${gCur})`, true),
+    card('Total Investido', blend(ts), sameCur ? 'Meta + Google Ads' : `Meta (${mCur}) + Google (${gCur})`, true),
     card('Receita (Ads)', blend(tr), 'atribuição das plataformas'),
     card('ROAS Blendado', xr(ts ? tr/ts : 0), 'retorno sobre investimento'),
     card('CPA Blendado', blend(tconv ? ts/tconv : 0), 'custo por conversão'),
@@ -686,42 +689,40 @@ renderView();
 </html>"""
 
 
+def _fetch_period(since, until):
+    return {
+        "meta": fetch_meta(since, until),
+        "google_ads": fetch_google_ads(since, until),
+        "meta_campaigns": fetch_meta_breakdown(since, until, "campaign"),
+        "meta_adsets": fetch_meta_breakdown(since, until, "adset"),
+        "meta_ads": fetch_meta_breakdown(since, until, "ad"),
+        "google_campaigns": fetch_google_campaigns(since, until),
+        "google_adgroups": fetch_google_adgroups(since, until),
+        "google_ads_breakdown": fetch_google_ads_breakdown(since, until),
+        "meta_geo": fetch_meta_geo(since, until),
+        "google_geo": fetch_google_geo(since, until),
+        "ga4": fetch_ga4(since, until),
+        "woocommerce": fetch_woocommerce(since, until),
+    }
+
+
 def main():
     today = datetime.now()
     yesterday = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    d7_start = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+    d30_start = (today - timedelta(days=30)).strftime("%Y-%m-%d")
     mtd_start = today.replace(day=1).strftime("%Y-%m-%d")
+    last_month_end = today.replace(day=1) - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1).strftime("%Y-%m-%d")
     today_str = today.strftime("%Y-%m-%d")
 
     print("Buscando dados...")
     data = {
-        "ontem": {
-            "meta": fetch_meta(yesterday, yesterday),
-            "google_ads": fetch_google_ads(yesterday, yesterday),
-            "meta_campaigns": fetch_meta_breakdown(yesterday, yesterday, "campaign"),
-            "meta_adsets": fetch_meta_breakdown(yesterday, yesterday, "adset"),
-            "meta_ads": fetch_meta_breakdown(yesterday, yesterday, "ad"),
-            "google_campaigns": fetch_google_campaigns(yesterday, yesterday),
-            "google_adgroups": fetch_google_adgroups(yesterday, yesterday),
-            "google_ads_breakdown": fetch_google_ads_breakdown(yesterday, yesterday),
-            "meta_geo": fetch_meta_geo(yesterday, yesterday),
-            "google_geo": fetch_google_geo(yesterday, yesterday),
-            "ga4": fetch_ga4(yesterday, yesterday),
-            "woocommerce": fetch_woocommerce(yesterday, yesterday),
-        },
-        "mtd": {
-            "meta": fetch_meta(mtd_start, today_str),
-            "google_ads": fetch_google_ads(mtd_start, today_str),
-            "meta_campaigns": fetch_meta_breakdown(mtd_start, today_str, "campaign"),
-            "meta_adsets": fetch_meta_breakdown(mtd_start, today_str, "adset"),
-            "meta_ads": fetch_meta_breakdown(mtd_start, today_str, "ad"),
-            "google_campaigns": fetch_google_campaigns(mtd_start, today_str),
-            "google_adgroups": fetch_google_adgroups(mtd_start, today_str),
-            "google_ads_breakdown": fetch_google_ads_breakdown(mtd_start, today_str),
-            "meta_geo": fetch_meta_geo(mtd_start, today_str),
-            "google_geo": fetch_google_geo(mtd_start, today_str),
-            "ga4": fetch_ga4(mtd_start, today_str),
-            "woocommerce": fetch_woocommerce(mtd_start, today_str),
-        },
+        "ontem": _fetch_period(yesterday, yesterday),
+        "d7": _fetch_period(d7_start, today_str),
+        "d30": _fetch_period(d30_start, today_str),
+        "mtd": _fetch_period(mtd_start, today_str),
+        "last_month": _fetch_period(last_month_start, last_month_end.strftime("%Y-%m-%d")),
     }
 
     client_name = os.environ.get("CLIENT_NAME", "Dashboard")
