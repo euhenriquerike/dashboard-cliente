@@ -427,16 +427,27 @@ def fetch_woocommerce(since, until):
             currency = cur_resp.get("value", "EUR") if isinstance(cur_resp, dict) else "EUR"
         except Exception:
             currency = "EUR"
-        orders = wc.get("orders", params={
-            "after": since + "T00:00:00",
-            "before": until + "T23:59:59",
-            "status": "completed,processing",
-            "per_page": 100,
-        }).json()
-        if not isinstance(orders, list):
+        all_orders = []
+        for status in ["completed", "processing", "on-hold"]:
+            page = 1
+            while True:
+                resp = wc.get("orders", params={
+                    "after": since + "T00:00:00",
+                    "before": until + "T23:59:59",
+                    "status": status,
+                    "per_page": 100,
+                    "page": page,
+                }).json()
+                if not isinstance(resp, list) or not resp:
+                    break
+                all_orders.extend(resp)
+                if len(resp) < 100:
+                    break
+                page += 1
+        if not all_orders:
             return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0, "currency": currency}
-        rev = sum(float(o.get("total", 0)) for o in orders)
-        n = len(orders)
+        rev = sum(float(o.get("total", 0)) for o in all_orders)
+        n = len(all_orders)
         return {"orders": n, "revenue": rev, "avg_ticket": rev / n if n else 0, "currency": currency}
     except Exception as e:
         print(f"[WooCommerce] {e}")
