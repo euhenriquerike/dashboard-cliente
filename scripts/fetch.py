@@ -380,8 +380,8 @@ def fetch_ga4(since, until):
                 "https://oauth2.googleapis.com/token",
                 data={
                     "refresh_token": refresh_token,
-                    "client_id": os.environ["GOOGLE_ADS_CLIENT_ID"].strip(),
-                    "client_secret": os.environ["GOOGLE_ADS_CLIENT_SECRET"].strip(),
+                    "client_id": os.environ.get("GA4_CLIENT_ID", os.environ["GOOGLE_ADS_CLIENT_ID"]).strip(),
+                    "client_secret": os.environ.get("GA4_CLIENT_SECRET", os.environ["GOOGLE_ADS_CLIENT_SECRET"]).strip(),
                     "grant_type": "refresh_token",
                 },
                 timeout=15,
