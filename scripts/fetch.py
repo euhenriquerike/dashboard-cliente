@@ -612,6 +612,7 @@ function renderView() {
 function renderOverview(data) {
   const {meta: m, google_ads: g, ga4, woocommerce: wc} = data;
   const mCur = m.currency || 'BRL', gCur = g.currency || 'BRL';
+  const wcCur = wc.currency || 'EUR';
   const sameCur = mCur === gCur;
   const blend = v => fmt(v, sameCur ? mCur : 'BRL');
   const ts = m.spend + g.spend, tc = m.clicks + g.clicks, ti = m.impressions + g.impressions;
@@ -656,7 +657,6 @@ function renderOverview(data) {
     card('Taxa de Conversão', pct(ga4.conversion_rate)),
   ].join('');
 
-  const wcCur = wc.currency || 'EUR';
   document.getElementById('wc').innerHTML = [
     card('Pedidos', num(wc.orders)),
     card('Receita Loja', fmt(wc.revenue, wcCur)),
