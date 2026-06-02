@@ -491,6 +491,7 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
     <button class="tab" onclick="setPeriod('d30',this)">Últimos 30 dias</button>
     <button class="tab" onclick="setPeriod('mtd',this)">Mês até hoje</button>
     <button class="tab" onclick="setPeriod('last_month',this)">Mês passado</button>
+    <button class="tab" onclick="setPeriod('apr1',this)">Desde 1º de Abril</button>
   </div>
   <div class="tabs vtabs">
     <button class="tab vtab active" onclick="setView('overview',this)">Visão Geral</button>
@@ -498,6 +499,7 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
     <button class="tab vtab" onclick="setView('adsets',this)">Conjuntos</button>
     <button class="tab vtab" onclick="setView('ads',this)">Anúncios</button>
     <button class="tab vtab" onclick="setView('geo',this)">Geográfico</button>
+    <button class="tab vtab" onclick="setView('relatorio',this)">Relatório</button>
   </div>
 
   <div id="v-overview">
@@ -547,6 +549,15 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
     <p class="sec">Google Ads — Por País</p>
     <div class="tscroll" id="geo-google"></div>
   </div>
+
+  <div id="v-relatorio" style="display:none">
+    <p class="sec">Relatório para E-mail</p>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <button onclick="copyReport()" style="padding:8px 18px;border-radius:20px;font-size:13px;cursor:pointer;border:none;background:#111;color:#fff;font-weight:500">Copiar texto</button>
+      <span id="copy-msg" style="font-size:12px;color:#34c759;display:none">Copiado!</span>
+    </div>
+    <textarea id="report-text" readonly style="width:100%;height:520px;font-family:monospace;font-size:13px;background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:20px;resize:vertical;line-height:1.6"></textarea>
+  </div>
 </main>
 <footer>Dashboard gerado automaticamente · __UPDATED_AT__</footer>
 <script>
@@ -579,7 +590,7 @@ function setView(v, btn) {
 
 function renderView() {
   const data = D[curPeriod];
-  ({overview: renderOverview, campaigns: renderCampaigns, adsets: renderAdsets, ads: renderAds, geo: renderGeo})[curView](data);
+  ({overview: renderOverview, campaigns: renderCampaigns, adsets: renderAdsets, ads: renderAds, geo: renderGeo, relatorio: renderRelatorio})[curView](data);
 }
 
 function renderOverview(data) {
@@ -684,6 +695,150 @@ function renderGeo(data) {
 }
 
 renderView();
+
+function renderRelatorio(data) {
+  const {meta: m, google_ads: g, ga4, woocommerce: wc, meta_campaigns, google_campaigns, meta_adsets, google_adgroups, meta_ads, google_ads_breakdown} = data;
+  const mCur = m.currency || 'BRL', gCur = g.currency || 'BRL';
+  const ts = m.spend + g.spend, tr = m.revenue + g.revenue;
+  const tconv = (m.purchases || 0) + (g.conversions || 0);
+  const tc = m.clicks + g.clicks, ti = m.impressions + g.impressions;
+
+  const b = (v, c) => (c==='EUR'?'€ ':'R$ ') + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const n = v => Math.round(+v||0).toLocaleString('pt-BR');
+  const p = v => (+v||0).toFixed(2) + '%';
+  const x = v => (+v||0).toFixed(2) + 'x';
+  const line = '━'.repeat(40);
+  const dash = '—';
+
+  const periodLabel = {ontem:'Ontem',d7:'Últimos 7 dias',d30:'Últimos 30 dias',mtd:'Mês até hoje',last_month:'Mês passado',apr1:'1º de Abril até hoje'}[curPeriod] || curPeriod;
+
+  let r = '';
+  r += 'RELATÓRIO DE PERFORMANCE\n';
+  r += periodLabel.toUpperCase() + '\n';
+  r += line + '\n\n';
+
+  r += 'RESUMO GERAL\n';
+  r += `Investimento Total ........ ${b(ts,'BRL')}\n`;
+  r += `  Meta Ads ................ ${b(m.spend,mCur)}\n`;
+  r += `  Google Ads .............. ${b(g.spend,gCur)}\n`;
+  r += `Receita (atribuída) ....... ${b(tr,'BRL')}\n`;
+  r += `ROAS Blendado ............. ${x(ts?tr/ts:0)}\n`;
+  r += `CPA Blendado .............. ${b(tconv?ts/tconv:0,'BRL')}\n`;
+  r += `Conversões Totais ......... ${n(tconv)}\n`;
+  r += `Impressões ................ ${n(ti)}\n`;
+  r += `Cliques ................... ${n(tc)}\n`;
+  r += `CTR Blendado .............. ${p(ti?tc/ti*100:0)}\n`;
+  r += `CPM Blendado .............. ${b(ti?ts/ti*1000:0,'BRL')}\n`;
+  r += `CPC Blendado .............. ${b(tc?ts/tc:0,'BRL')}\n\n`;
+
+  r += line + '\n';
+  r += 'META ADS\n';
+  r += line + '\n';
+  r += `Investimento .............. ${b(m.spend,mCur)}\n`;
+  r += `Impressões ................ ${n(m.impressions)}\n`;
+  r += `Cliques ................... ${n(m.clicks)}\n`;
+  r += `CTR ....................... ${p(m.ctr)}\n`;
+  r += `CPM ....................... ${b(m.cpm,mCur)}\n`;
+  r += `CPC ....................... ${b(m.cpc,mCur)}\n`;
+  r += `Compras ................... ${n(m.purchases||0)}\n`;
+  r += `Receita ................... ${b(m.revenue,mCur)}\n`;
+  r += `ROAS ...................... ${x(m.roas)}\n`;
+  r += `CPA ....................... ${b(m.cpa,mCur)}\n`;
+  r += `Alcance ................... ${n(m.reach||0)}\n\n`;
+
+  if (meta_campaigns && meta_campaigns.length) {
+    r += 'Campanhas Meta (top ' + Math.min(meta_campaigns.length,5) + '):\n';
+    meta_campaigns.slice(0,5).forEach((c,i) => {
+      r += `  ${i+1}. ${c.name}\n`;
+      r += `     Investido: ${b(c.spend,mCur)} | ROAS: ${x(c.roas)} | Compras: ${n(c.purchases||0)} | CPA: ${b(c.cpa,mCur)}\n`;
+    });
+    r += '\n';
+  }
+
+  if (meta_adsets && meta_adsets.length) {
+    r += 'Conjuntos Meta (top ' + Math.min(meta_adsets.length,5) + '):\n';
+    meta_adsets.slice(0,5).forEach((c,i) => {
+      r += `  ${i+1}. ${c.name}\n`;
+      r += `     Investido: ${b(c.spend,mCur)} | CTR: ${p(c.ctr)} | CPC: ${b(c.cpc,mCur)} | Compras: ${n(c.purchases||0)}\n`;
+    });
+    r += '\n';
+  }
+
+  if (meta_ads && meta_ads.length) {
+    r += 'Anúncios Meta (top ' + Math.min(meta_ads.length,5) + '):\n';
+    meta_ads.slice(0,5).forEach((c,i) => {
+      r += `  ${i+1}. ${c.name}\n`;
+      r += `     Campanha: ${c.campaign||dash} | Conjunto: ${c.adset||dash}\n`;
+      r += `     Investido: ${b(c.spend,mCur)} | CTR: ${p(c.ctr)} | Compras: ${n(c.purchases||0)} | ROAS: ${x(c.roas)}\n`;
+    });
+    r += '\n';
+  }
+
+  r += line + '\n';
+  r += 'GOOGLE ADS\n';
+  r += line + '\n';
+  r += `Investimento .............. ${b(g.spend,gCur)}\n`;
+  r += `Impressões ................ ${n(g.impressions)}\n`;
+  r += `Cliques ................... ${n(g.clicks)}\n`;
+  r += `CTR ....................... ${p(g.ctr)}\n`;
+  r += `CPM ....................... ${b(g.cpm,gCur)}\n`;
+  r += `CPC ....................... ${b(g.cpc,gCur)}\n`;
+  r += `Conversões ................ ${n(g.conversions||0)}\n`;
+  r += `Receita ................... ${b(g.revenue,gCur)}\n`;
+  r += `ROAS ...................... ${x(g.roas)}\n`;
+  r += `CPA ....................... ${b(g.cpa,gCur)}\n\n`;
+
+  if (google_campaigns && google_campaigns.length) {
+    r += 'Campanhas Google (top ' + Math.min(google_campaigns.length,5) + '):\n';
+    google_campaigns.slice(0,5).forEach((c,i) => {
+      r += `  ${i+1}. ${c.name} [${c.status}]\n`;
+      r += `     Investido: ${b(c.spend,gCur)} | ROAS: ${x(c.roas)} | Conv.: ${n(c.conversions||0)} | CPA: ${b(c.cpa,gCur)}\n`;
+    });
+    r += '\n';
+  }
+
+  if (google_adgroups && google_adgroups.length) {
+    r += 'Grupos Google (top ' + Math.min(google_adgroups.length,5) + '):\n';
+    google_adgroups.slice(0,5).forEach((c,i) => {
+      r += `  ${i+1}. ${c.name}\n`;
+      r += `     Campanha: ${c.campaign||dash} | Investido: ${b(c.spend,gCur)} | CTR: ${p(c.ctr)} | Conv.: ${n(c.conversions||0)}\n`;
+    });
+    r += '\n';
+  }
+
+  r += line + '\n';
+  r += 'GOOGLE ANALYTICS 4\n';
+  r += line + '\n';
+  r += `Sessões ................... ${n(ga4.sessions)}\n`;
+  r += `Usuários .................. ${n(ga4.users)}\n`;
+  r += `Transações ................ ${n(ga4.transactions)}\n`;
+  r += `Receita GA4 ............... ${b(ga4.revenue,'BRL')}\n`;
+  r += `Taxa de Conversão ......... ${p(ga4.conversion_rate)}\n`;
+  r += `Custo por Visita .......... ${b(ga4.sessions?ts/ga4.sessions:0,'BRL')}\n`;
+  r += `Connect Rate .............. ${p(tc?ga4.sessions/tc*100:0)}\n\n`;
+
+  r += line + '\n';
+  r += 'LOJA (WOOCOMMERCE)\n';
+  r += line + '\n';
+  r += `Pedidos ................... ${n(wc.orders)}\n`;
+  r += `Receita ................... ${b(wc.revenue,'BRL')}\n`;
+  r += `Ticket Médio .............. ${b(wc.avg_ticket,'BRL')}\n\n`;
+
+  r += line + '\n';
+  r += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
+
+  document.getElementById('report-text').value = r;
+}
+
+function copyReport() {
+  const ta = document.getElementById('report-text');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const msg = document.getElementById('copy-msg');
+    msg.style.display = 'inline';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  });
+}
 </script>
 </body>
 </html>"""
@@ -717,12 +872,15 @@ def main():
     today_str = today.strftime("%Y-%m-%d")
 
     print("Buscando dados...")
+    apr1_start = today.replace(month=4, day=1).strftime("%Y-%m-%d")
+
     data = {
         "ontem": _fetch_period(yesterday, yesterday),
         "d7": _fetch_period(d7_start, today_str),
         "d30": _fetch_period(d30_start, today_str),
         "mtd": _fetch_period(mtd_start, today_str),
         "last_month": _fetch_period(last_month_start, last_month_end.strftime("%Y-%m-%d")),
+        "apr1": _fetch_period(apr1_start, today_str),
     }
 
     client_name = os.environ.get("CLIENT_NAME", "Dashboard")
