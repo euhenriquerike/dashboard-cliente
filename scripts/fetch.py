@@ -422,6 +422,11 @@ def fetch_woocommerce(since, until):
             version="wc/v3",
             timeout=30,
         )
+        try:
+            cur_resp = wc.get("settings/general/woocommerce_currency").json()
+            currency = cur_resp.get("value", "EUR") if isinstance(cur_resp, dict) else "EUR"
+        except Exception:
+            currency = "EUR"
         orders = wc.get("orders", params={
             "after": since + "T00:00:00",
             "before": until + "T23:59:59",
@@ -429,13 +434,13 @@ def fetch_woocommerce(since, until):
             "per_page": 100,
         }).json()
         if not isinstance(orders, list):
-            return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0}
+            return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0, "currency": currency}
         rev = sum(float(o.get("total", 0)) for o in orders)
         n = len(orders)
-        return {"orders": n, "revenue": rev, "avg_ticket": rev / n if n else 0}
+        return {"orders": n, "revenue": rev, "avg_ticket": rev / n if n else 0, "currency": currency}
     except Exception as e:
         print(f"[WooCommerce] {e}")
-        return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0}
+        return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0, "currency": "EUR"}
 
 
 # ── HTML template ──────────────────────────────────────────────────────────────
@@ -636,14 +641,15 @@ function renderOverview(data) {
     card('Sessões', num(ga4.sessions)),
     card('Usuários', num(ga4.users)),
     card('Transações', num(ga4.transactions)),
-    card('Receita GA4', fmtBRL(ga4.revenue)),
+    card('Receita GA4', fmt(ga4.revenue, wcCur)),
     card('Taxa de Conversão', pct(ga4.conversion_rate)),
   ].join('');
 
+  const wcCur = wc.currency || 'EUR';
   document.getElementById('wc').innerHTML = [
     card('Pedidos', num(wc.orders)),
-    card('Receita Loja', fmtBRL(wc.revenue)),
-    card('Ticket Médio', fmtBRL(wc.avg_ticket)),
+    card('Receita Loja', fmt(wc.revenue, wcCur)),
+    card('Ticket Médio', fmt(wc.avg_ticket, wcCur)),
   ].join('');
 }
 
