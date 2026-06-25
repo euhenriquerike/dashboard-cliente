@@ -4,346 +4,243 @@ import os
 import requests
 from datetime import datetime, timedelta
 
-from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import DateRange, Metric, RunReportRequest
-from google.oauth2 import service_account
-from woocommerce import API as WcAPI
 
 
 _meta_currency_cache = None
-_google_setup_cache = None
 
 
-# ── Meta Ads ──────────────────────────────────────────────────────────────────
+# ── Meta Ads (demo data) ──────────────────────────────────────────────────────
 
-def _meta_currency():
-    global _meta_currency_cache
-    if _meta_currency_cache:
-        return _meta_currency_cache
-    try:
-        r = requests.get(
-            f"https://graph.facebook.com/v19.0/{os.environ['META_ACCOUNT_ID']}",
-            params={"access_token": os.environ["META_ACCESS_TOKEN"], "fields": "currency"},
-            timeout=10,
-        )
-        _meta_currency_cache = r.json().get("currency", "BRL")
-    except Exception:
-        _meta_currency_cache = "BRL"
-    return _meta_currency_cache
-
-
-def _parse_meta_row(d):
-    spend = float(d.get("spend", 0))
-    imp = int(d.get("impressions", 0))
-    clicks = int(d.get("clicks", 0))
-    actions = {a["action_type"]: float(a["value"]) for a in d.get("actions", [])}
-    avals = {a["action_type"]: float(a["value"]) for a in d.get("action_values", [])}
-    purchases = int(actions.get("purchase", 0))
-    revenue = avals.get("purchase", 0.0)
+def _meta_base(n):
+    spend = round(280.0 * n, 2)
+    imp = 42000 * n
+    clicks = 840 * n
+    purchases = int(24 * n)
+    rev = round(5040.0 * n, 2)
     return {
-        "spend": spend,
-        "impressions": imp,
-        "clicks": clicks,
-        "reach": int(d.get("reach", 0)),
-        "cpm": float(d.get("cpm", spend / imp * 1000 if imp else 0)),
-        "cpc": float(d.get("cpc", spend / clicks if clicks else 0)),
-        "ctr": float(d.get("ctr", clicks / imp * 100 if imp else 0)),
-        "purchases": purchases,
-        "revenue": revenue,
-        "cpa": spend / purchases if purchases else 0,
-        "roas": revenue / spend if spend else 0,
+        "spend": spend, "impressions": imp, "clicks": clicks, "reach": int(32000 * n),
+        "cpm": round(spend / imp * 1000, 6) if imp else 0,
+        "cpc": round(spend / clicks, 6) if clicks else 0,
+        "ctr": round(clicks / imp * 100, 6) if imp else 0,
+        "purchases": purchases, "revenue": rev,
+        "cpa": round(spend / purchases, 2) if purchases else 0,
+        "roas": round(rev / spend, 4) if spend else 0,
+        "currency": "USD",
     }
 
 
 def fetch_meta(since, until):
-    try:
-        tok = os.environ["META_ACCESS_TOKEN"]
-        acc = os.environ["META_ACCOUNT_ID"]
-        r = requests.get(
-            f"https://graph.facebook.com/v19.0/{acc}/insights",
-            params={
-                "access_token": tok,
-                "fields": "spend,impressions,clicks,reach,actions,action_values,cpc,ctr,cpm",
-                "time_range": json.dumps({"since": since, "until": until}),
-                "level": "account",
-            },
-            timeout=30,
-        )
-        raw = r.json().get("data", [])
-        result = _parse_meta_row(raw[0] if raw else {})
-        result["currency"] = _meta_currency()
-        return result
-    except Exception as e:
-        print(f"[Meta] {e}")
-        return {"spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "cpm": 0, "cpc": 0, "ctr": 0, "purchases": 0, "revenue": 0, "cpa": 0, "roas": 0, "currency": "BRL"}
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    return _meta_base(n)
 
 
 def fetch_meta_breakdown(since, until, level):
-    try:
-        tok = os.environ["META_ACCESS_TOKEN"]
-        acc = os.environ["META_ACCOUNT_ID"]
-        name_key = {"campaign": "campaign_name", "adset": "adset_name", "ad": "ad_name"}[level]
-        r = requests.get(
-            f"https://graph.facebook.com/v19.0/{acc}/insights",
-            params={
-                "access_token": tok,
-                "fields": "campaign_name,adset_name,ad_name,spend,impressions,clicks,reach,cpc,ctr,cpm,actions,action_values",
-                "time_range": json.dumps({"since": since, "until": until}),
-                "level": level,
-                "limit": 50,
-            },
-            timeout=30,
-        )
-        rows = []
-        for d in r.json().get("data", []):
-            row = _parse_meta_row(d)
-            row["name"] = d.get(name_key, "—")
-            if level in ("adset", "ad"):
-                row["campaign"] = d.get("campaign_name", "—")
-            if level == "ad":
-                row["adset"] = d.get("adset_name", "—")
-            rows.append(row)
-        rows.sort(key=lambda x: x["spend"], reverse=True)
-        return rows
-    except Exception as e:
-        print(f"[Meta {level}] {e}")
-        return []
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    camps = [
+        {"name": "ASC_ALL — DPA Catalog — SALES", "w": 0.60},
+        {"name": "RETARGETING — Site Visitors 30d", "w": 0.30},
+        {"name": "PROSPECTING — Lookalike 1-3%", "w": 0.10},
+    ]
+    adsets = [
+        {"name": "Advantage+ Placement — DPA Catalog", "camp": "ASC_ALL — DPA Catalog — SALES", "w": 0.60},
+        {"name": "Retargeting — Website Visitors 30d", "camp": "RETARGETING — Site Visitors 30d", "w": 0.30},
+        {"name": "Lookalike 1-3% — All Purchasers", "camp": "PROSPECTING — Lookalike 1-3%", "w": 0.10},
+    ]
+    ads_list = [
+        {"name": "DPA_Carousel_MultiProduct_v1", "adset": "Advantage+ Placement — DPA Catalog", "camp": "ASC_ALL — DPA Catalog — SALES", "w": 0.36},
+        {"name": "DPA_SingleImage_ProductFeed_v2", "adset": "Advantage+ Placement — DPA Catalog", "camp": "ASC_ALL — DPA Catalog — SALES", "w": 0.24},
+        {"name": "Video_Retargeting_30s_Offer", "adset": "Retargeting — Website Visitors 30d", "camp": "RETARGETING — Site Visitors 30d", "w": 0.30},
+        {"name": "Static_Lookalike_BrandOffer", "adset": "Lookalike 1-3% — All Purchasers", "camp": "PROSPECTING — Lookalike 1-3%", "w": 0.10},
+    ]
+    base = _meta_base(n)
+    items = {"campaign": camps, "adset": adsets, "ad": ads_list}[level]
+    rows = []
+    for item in items:
+        w = item["w"]
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        purchases = int(base["purchases"] * w)
+        rev = round(base["revenue"] * w, 2)
+        row = {
+            "name": item["name"], "spend": spend, "impressions": imp, "clicks": clicks,
+            "reach": int(base["reach"] * w),
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "purchases": purchases, "revenue": rev,
+            "cpa": round(spend / purchases, 2) if purchases else 0,
+            "roas": round(rev / spend, 4) if spend else 0,
+        }
+        if level in ("adset", "ad"):
+            row["campaign"] = item["camp"]
+        if level == "ad":
+            row["adset"] = item["adset"]
+        rows.append(row)
+    return rows
 
 
 def fetch_meta_geo(since, until):
-    try:
-        tok = os.environ["META_ACCESS_TOKEN"]
-        acc = os.environ["META_ACCOUNT_ID"]
-        r = requests.get(
-            f"https://graph.facebook.com/v19.0/{acc}/insights",
-            params={
-                "access_token": tok,
-                "fields": "spend,impressions,clicks,cpc,ctr,cpm,actions,action_values",
-                "time_range": json.dumps({"since": since, "until": until}),
-                "breakdowns": "country",
-                "level": "account",
-                "limit": 30,
-            },
-            timeout=30,
-        )
-        rows = []
-        for d in r.json().get("data", []):
-            row = _parse_meta_row(d)
-            row["country"] = d.get("country", "—")
-            rows.append(row)
-        rows.sort(key=lambda x: x["spend"], reverse=True)
-        return rows
-    except Exception as e:
-        print(f"[Meta Geo] {e}")
-        return []
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _meta_base(n)
+    geos = [("United States", 0.68), ("United Kingdom", 0.17), ("Canada", 0.15)]
+    rows = []
+    for country, w in geos:
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        purchases = int(base["purchases"] * w)
+        rows.append({
+            "country": country, "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "purchases": purchases,
+        })
+    return rows
 
 
-# ── Google Ads ─────────────────────────────────────────────────────────────────
+# ── Google Ads (demo data) ────────────────────────────────────────────────────
 
-def _google_setup():
-    global _google_setup_cache
-    if _google_setup_cache:
-        return _google_setup_cache
-    tok = requests.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "refresh_token": os.environ["GOOGLE_ADS_REFRESH_TOKEN"],
-            "client_id": os.environ["GOOGLE_ADS_CLIENT_ID"],
-            "client_secret": os.environ["GOOGLE_ADS_CLIENT_SECRET"],
-            "grant_type": "refresh_token",
-        },
-        timeout=15,
-    ).json()
-    if "access_token" not in tok:
-        raise RuntimeError(f"token failed: {tok.get('error')}")
-    cid = os.environ["GOOGLE_ADS_CUSTOMER_ID"].replace("-", "").strip()
-    headers = {
-        "Authorization": f"Bearer {tok['access_token']}",
-        "developer-token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"].strip(),
-        "Content-Type": "application/json",
-    }
-    login = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", "").strip()
-    if login:
-        headers["login-customer-id"] = login
-    _google_setup_cache = (cid, headers)
-    return _google_setup_cache
-
-
-def _gads_query(query):
-    cid, headers = _google_setup()
-    r = requests.post(
-        f"https://googleads.googleapis.com/v20/customers/{cid}/googleAds:search",
-        headers=headers, json={"query": query}, timeout=30,
-    )
-    data = r.json()
-    if "error" in data:
-        raise RuntimeError(data["error"].get("message", str(data["error"])))
-    return data.get("results", [])
-
-
-def _google_currency():
-    try:
-        res = _gads_query("SELECT customer.currency_code FROM customer LIMIT 1")
-        if res:
-            return res[0].get("customer", {}).get("currencyCode", "BRL")
-    except Exception:
-        pass
-    return "BRL"
-
-
-def _parse_gads(m):
-    cost = int(m.get("costMicros", 0)) / 1_000_000
-    imp = int(m.get("impressions", 0))
-    clicks = int(m.get("clicks", 0))
-    conv = float(m.get("conversions", 0))
-    rev = float(m.get("conversionsValue", 0))
+def _gads_base(n):
+    spend = round(195.0 * n, 2)
+    imp = 38500 * n
+    clicks = 1733 * n
+    conv = int(38 * n)
+    rev = round(5890.0 * n, 2)
     return {
-        "spend": cost,
-        "impressions": imp,
-        "clicks": clicks,
-        "cpm": cost / imp * 1000 if imp else 0,
-        "cpc": cost / clicks if clicks else 0,
-        "ctr": clicks / imp * 100 if imp else 0,
-        "conversions": int(conv),
-        "revenue": rev,
-        "cpa": cost / conv if conv else 0,
-        "roas": rev / cost if cost else 0,
+        "spend": spend, "impressions": imp, "clicks": clicks,
+        "cpm": round(spend / imp * 1000, 6) if imp else 0,
+        "cpc": round(spend / clicks, 6) if clicks else 0,
+        "ctr": round(clicks / imp * 100, 6) if imp else 0,
+        "conversions": conv, "revenue": rev,
+        "cpa": round(spend / conv, 2) if conv else 0,
+        "roas": round(rev / spend, 4) if spend else 0,
+        "currency": "USD",
     }
 
 
 def fetch_google_ads(since, until):
-    try:
-        results = _gads_query(
-            f"SELECT metrics.cost_micros,metrics.impressions,metrics.clicks,"
-            f"metrics.conversions,metrics.conversions_value"
-            f" FROM customer WHERE segments.date BETWEEN '{since}' AND '{until}'"
-        )
-        totals = {"costMicros": 0, "impressions": 0, "clicks": 0, "conversions": 0.0, "conversionsValue": 0.0}
-        for r in results:
-            m = r.get("metrics", {})
-            totals["costMicros"] += int(m.get("costMicros", 0))
-            totals["impressions"] += int(m.get("impressions", 0))
-            totals["clicks"] += int(m.get("clicks", 0))
-            totals["conversions"] += float(m.get("conversions", 0))
-            totals["conversionsValue"] += float(m.get("conversionsValue", 0))
-        result = _parse_gads(totals)
-        result["currency"] = _google_currency()
-        return result
-    except Exception as e:
-        print(f"[Google Ads] {e}")
-        return {"spend": 0, "impressions": 0, "clicks": 0, "cpm": 0, "cpc": 0, "ctr": 0, "conversions": 0, "revenue": 0, "cpa": 0, "roas": 0, "currency": "BRL"}
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    return _gads_base(n)
 
 
 def fetch_google_campaigns(since, until):
-    try:
-        results = _gads_query(
-            f"SELECT campaign.name,campaign.status,metrics.cost_micros,metrics.impressions,"
-            f"metrics.clicks,metrics.conversions,metrics.conversions_value"
-            f" FROM campaign WHERE segments.date BETWEEN '{since}' AND '{until}'"
-            f" ORDER BY metrics.cost_micros DESC LIMIT 50"
-        )
-        rows = []
-        for r in results:
-            row = _parse_gads(r.get("metrics", {}))
-            c = r.get("campaign", {})
-            row["name"] = c.get("name", "—")
-            row["status"] = c.get("status", "—")
-            rows.append(row)
-        return rows
-    except Exception as e:
-        print(f"[Google Campaigns] {e}")
-        return []
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _gads_base(n)
+    items = [
+        {"name": "PMax — All Products", "status": "ENABLED", "w": 0.50},
+        {"name": "Search — Brand Keywords", "status": "ENABLED", "w": 0.30},
+        {"name": "Search — Category Keywords", "status": "ENABLED", "w": 0.20},
+    ]
+    rows = []
+    for item in items:
+        w = item["w"]
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        rev = round(base["revenue"] * w, 2)
+        rows.append({
+            "name": item["name"], "status": item["status"], "spend": spend,
+            "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv, "revenue": rev,
+            "cpa": round(spend / conv, 2) if conv else 0,
+            "roas": round(rev / spend, 4) if spend else 0,
+        })
+    return rows
 
 
 def fetch_google_adgroups(since, until):
-    try:
-        results = _gads_query(
-            f"SELECT ad_group.name,ad_group.status,campaign.name,metrics.cost_micros,"
-            f"metrics.impressions,metrics.clicks,metrics.conversions,metrics.conversions_value"
-            f" FROM ad_group WHERE segments.date BETWEEN '{since}' AND '{until}'"
-            f" ORDER BY metrics.cost_micros DESC LIMIT 50"
-        )
-        rows = []
-        for r in results:
-            row = _parse_gads(r.get("metrics", {}))
-            ag = r.get("adGroup", {})
-            row["name"] = ag.get("name", "—")
-            row["status"] = ag.get("status", "—")
-            row["campaign"] = r.get("campaign", {}).get("name", "—")
-            rows.append(row)
-        return rows
-    except Exception as e:
-        print(f"[Google AdGroups] {e}")
-        return []
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _gads_base(n)
+    items = [
+        {"name": "All Products — Shopping", "camp": "PMax — All Products", "w": 0.28},
+        {"name": "Performance Max — Dynamic", "camp": "PMax — All Products", "w": 0.22},
+        {"name": "Brand — Exact Match", "camp": "Search — Brand Keywords", "w": 0.30},
+        {"name": "Category — Broad Match", "camp": "Search — Category Keywords", "w": 0.20},
+    ]
+    rows = []
+    for item in items:
+        w = item["w"]
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        rev = round(base["revenue"] * w, 2)
+        rows.append({
+            "name": item["name"], "campaign": item["camp"], "status": "ENABLED",
+            "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv, "revenue": rev,
+            "cpa": round(spend / conv, 2) if conv else 0,
+            "roas": round(rev / spend, 4) if spend else 0,
+        })
+    return rows
 
 
 def fetch_google_ads_breakdown(since, until):
-    try:
-        results = _gads_query(
-            f"SELECT ad_group_ad.ad.name,ad_group_ad.ad.id,ad_group_ad.status,"
-            f"campaign.name,ad_group.name,metrics.cost_micros,metrics.impressions,"
-            f"metrics.clicks,metrics.conversions,metrics.conversions_value"
-            f" FROM ad_group_ad WHERE segments.date BETWEEN '{since}' AND '{until}'"
-            f" ORDER BY metrics.cost_micros DESC LIMIT 50"
-        )
-        rows = []
-        for r in results:
-            row = _parse_gads(r.get("metrics", {}))
-            ad = r.get("adGroupAd", {})
-            ad_info = ad.get("ad", {})
-            row["name"] = ad_info.get("name", "") or str(ad_info.get("id", "—"))
-            row["status"] = ad.get("status", "—")
-            row["campaign"] = r.get("campaign", {}).get("name", "—")
-            row["adset"] = r.get("adGroup", {}).get("name", "—")
-            rows.append(row)
-        return rows
-    except Exception as e:
-        print(f"[Google Ads breakdown] {e}")
-        return []
-
-
-_GEO = {
-    "2076": "Brasil", "2840": "EUA", "2620": "Portugal", "2032": "Argentina",
-    "2152": "Chile", "2170": "Colômbia", "2858": "Uruguai", "2604": "Peru",
-    "2276": "Alemanha", "2250": "França", "2724": "Espanha", "2380": "Itália",
-    "2826": "Reino Unido", "2528": "Países Baixos", "2036": "Austrália",
-    "2124": "Canadá", "2392": "Japão", "2156": "China", "2710": "África do Sul",
-    "2484": "México",
-}
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _gads_base(n)
+    items = [
+        {"name": "RSA — Brand Core", "adset": "Brand — Exact Match", "camp": "Search — Brand Keywords", "w": 0.30},
+        {"name": "RSA — Category Main", "adset": "Category — Broad Match", "camp": "Search — Category Keywords", "w": 0.20},
+        {"name": "Responsive Display — Product A", "adset": "All Products — Shopping", "camp": "PMax — All Products", "w": 0.28},
+        {"name": "Smart Display — Retargeting", "adset": "Performance Max — Dynamic", "camp": "PMax — All Products", "w": 0.22},
+    ]
+    rows = []
+    for item in items:
+        w = item["w"]
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        rev = round(base["revenue"] * w, 2)
+        rows.append({
+            "name": item["name"], "campaign": item["camp"], "adset": item["adset"],
+            "status": "ENABLED", "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv, "revenue": rev,
+            "cpa": round(spend / conv, 2) if conv else 0,
+            "roas": round(rev / spend, 4) if spend else 0,
+        })
+    return rows
 
 
 def fetch_google_geo(since, until):
-    try:
-        results = _gads_query(
-            f"SELECT geographic_view.country_criterion_id,metrics.cost_micros,"
-            f"metrics.impressions,metrics.clicks,metrics.conversions,metrics.conversions_value"
-            f" FROM geographic_view WHERE segments.date BETWEEN '{since}' AND '{until}'"
-            f" ORDER BY metrics.cost_micros DESC LIMIT 30"
-        )
-        agg = {}
-        for r in results:
-            gv = r.get("geographicView", {})
-            cid = str(gv.get("countryCriterionId", "") or "")
-            if not cid:
-                continue
-            m = r.get("metrics", {})
-            if cid not in agg:
-                agg[cid] = {"costMicros": 0, "impressions": 0, "clicks": 0, "conversions": 0.0, "conversionsValue": 0.0}
-            agg[cid]["costMicros"] += int(m.get("costMicros", 0))
-            agg[cid]["impressions"] += int(m.get("impressions", 0))
-            agg[cid]["clicks"] += int(m.get("clicks", 0))
-            agg[cid]["conversions"] += float(m.get("conversions", 0))
-            agg[cid]["conversionsValue"] += float(m.get("conversionsValue", 0))
-        rows = []
-        for cid, totals in agg.items():
-            row = _parse_gads(totals)
-            row["country"] = _GEO.get(cid, f"ID:{cid}")
-            rows.append(row)
-        rows.sort(key=lambda x: x["spend"], reverse=True)
-        return rows
-    except Exception as e:
-        print(f"[Google Geo] {e}")
-        return []
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _gads_base(n)
+    geos = [("United States", 0.75), ("Canada", 0.16), ("United Kingdom", 0.09)]
+    rows = []
+    for country, w in geos:
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        rev = round(base["revenue"] * w, 2)
+        rows.append({
+            "country": country, "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv,
+        })
+    return rows
 
 
 # ── GA4 ────────────────────────────────────────────────────────────────────────
@@ -375,65 +272,32 @@ def _ga4_via_rest(since, until, access_token):
 def fetch_ga4(since, until):
     from datetime import date as _date
     n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
-    sessions = 1847 * n
+    sessions = 3840 * n
     users = int(sessions * 0.789)
-    transactions = int(sessions * 0.0233)
-    revenue = round(transactions * 338.5, 2)
-    return {"sessions": sessions, "users": users, "transactions": transactions, "revenue": revenue, "conversion_rate": 2.33}
+    transactions = int(sessions * 0.0229)
+    revenue = round(transactions * 220.0, 2)
+    return {"sessions": sessions, "users": users, "transactions": transactions, "revenue": revenue, "conversion_rate": 2.29}
 
 
 # ── WooCommerce ─────────────────────────────────────────────────────────────────
 
 def fetch_woocommerce(since, until):
-    try:
-        wc = WcAPI(
-            url=os.environ["WC_STORE_URL"],
-            consumer_key=os.environ["WC_CONSUMER_KEY"],
-            consumer_secret=os.environ["WC_CONSUMER_SECRET"],
-            version="wc/v3",
-            timeout=30,
-        )
-        try:
-            cur_resp = wc.get("settings/general/woocommerce_currency").json()
-            currency = cur_resp.get("value", "EUR") if isinstance(cur_resp, dict) else "EUR"
-        except Exception:
-            currency = "EUR"
-        all_orders = []
-        for status in ["completed", "processing", "on-hold"]:
-            page = 1
-            while True:
-                resp = wc.get("orders", params={
-                    "after": since + "T00:00:00",
-                    "before": until + "T23:59:59",
-                    "status": status,
-                    "per_page": 100,
-                    "page": page,
-                }).json()
-                if not isinstance(resp, list) or not resp:
-                    break
-                all_orders.extend(resp)
-                if len(resp) < 100:
-                    break
-                page += 1
-        if not all_orders:
-            return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0, "currency": currency}
-        rev = sum(float(o.get("total", 0)) for o in all_orders)
-        n = len(all_orders)
-        return {"orders": n, "revenue": rev, "avg_ticket": rev / n if n else 0, "currency": currency}
-    except Exception as e:
-        print(f"[WooCommerce] {e}")
-        return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0, "currency": "EUR"}
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    orders = int(85 * n)
+    revenue = round(18700.0 * n, 2)
+    return {"orders": orders, "revenue": revenue, "avg_ticket": round(revenue / orders, 2), "currency": "USD"}
 
 
 
 # ── TikTok Ads (demo data) ─────────────────────────────────────────────────────
 
 def _tiktok_base(n):
-    spend = round(245.5 * n, 2)
+    spend = round(155.0 * n, 2)
     imp = 87400 * n
     clicks = 1311 * n
     conv = int(12 * n)
-    rev = round(1960.0 * n, 2)
+    rev = round(3085.0 * n, 2)
     return {
         "spend": spend, "impressions": imp, "clicks": clicks,
         "reach": int(65000 * n),
@@ -443,7 +307,7 @@ def _tiktok_base(n):
         "conversions": conv, "revenue": rev,
         "cpa": round(spend / conv, 2) if conv else 0,
         "roas": round(rev / spend, 4) if spend else 0,
-        "currency": "BRL",
+        "currency": "USD",
     }
 
 
@@ -529,8 +393,8 @@ def _linkedin_base(n):
     spend = round(85.0 * n, 2)
     imp = 4200 * n
     clicks = 126 * n
-    conv = int(4 * n)
-    rev = round(1200.0 * n, 2)
+    conv = int(8 * n)
+    rev = round(2320.0 * n, 2)
     return {
         "spend": spend, "impressions": imp, "clicks": clicks,
         "cpm": round(spend / imp * 1000, 6) if imp else 0,
@@ -539,7 +403,7 @@ def _linkedin_base(n):
         "conversions": conv, "revenue": rev,
         "cpa": round(spend / conv, 2) if conv else 0,
         "roas": round(rev / spend, 4) if spend else 0,
-        "currency": "BRL",
+        "currency": "USD",
     }
 
 
@@ -754,9 +618,9 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
 const D = __DATA_JSON__;
 let curPeriod = 'ontem', curView = 'overview';
 
-const fmtBRL = v => 'R$ ' + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtEUR = v => '€ ' + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmt = (v, cur) => cur === 'EUR' ? fmtEUR(v) : fmtBRL(v);
+const fmtUSD = v => '$' + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtEUR = v => fmtUSD(v);
+const fmt = (v, cur) => fmtUSD(v);
 const num = v => Math.round(+v||0).toLocaleString('en-US');
 const xr = v => (+v||0).toFixed(2) + 'x';
 const pct = v => (+v||0).toFixed(2) + '%';
@@ -911,7 +775,7 @@ function renderRelatorio(data) {
   const tc = m.clicks + g.clicks + ((tk||{}).clicks||0) + ((li||{}).clicks||0);
   const ti = m.impressions + g.impressions + ((tk||{}).impressions||0) + ((li||{}).impressions||0);
 
-  const b = (v, c) => (c==='EUR'?'€ ':'R$ ') + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const b = (v, c) => '$' + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   const n = v => Math.round(+v||0).toLocaleString('en-US');
   const p = v => (+v||0).toFixed(2) + '%';
   const x = v => (+v||0).toFixed(2) + 'x';
@@ -1071,9 +935,9 @@ function renderRelatorio(data) {
   r += `Sessions .................. ${n(ga4.sessions)}\n`;
   r += `Users ..................... ${n(ga4.users)}\n`;
   r += `Transactions .............. ${n(ga4.transactions)}\n`;
-  r += `GA4 Revenue ............... ${b(ga4.revenue,'BRL')}\n`;
+  r += `GA4 Revenue ............... ${b(ga4.revenue,'USD')}\n`;
   r += `Conversion Rate ........... ${p(ga4.conversion_rate)}\n`;
-  r += `Cost per Visit ............ ${b(ga4.sessions?ts/ga4.sessions:0,'BRL')}\n`;
+  r += `Cost per Visit ............ ${b(ga4.sessions?ts/ga4.sessions:0,'USD')}\n`;
   r += `Connect Rate .............. ${p(tc?ga4.sessions/tc*100:0)}\n\n`;
 
   r += line + '\n';
