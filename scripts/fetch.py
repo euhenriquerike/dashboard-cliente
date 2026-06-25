@@ -425,10 +425,197 @@ def fetch_woocommerce(since, until):
         return {"orders": 0, "revenue": 0.0, "avg_ticket": 0.0, "currency": "EUR"}
 
 
+
+# ── TikTok Ads (demo data) ─────────────────────────────────────────────────────
+
+def _tiktok_base(n):
+    spend = round(245.5 * n, 2)
+    imp = 87400 * n
+    clicks = 1311 * n
+    conv = int(12 * n)
+    rev = round(1960.0 * n, 2)
+    return {
+        "spend": spend, "impressions": imp, "clicks": clicks,
+        "reach": int(65000 * n),
+        "cpm": round(spend / imp * 1000, 6) if imp else 0,
+        "cpc": round(spend / clicks, 6) if clicks else 0,
+        "ctr": round(clicks / imp * 100, 6) if imp else 0,
+        "conversions": conv, "revenue": rev,
+        "cpa": round(spend / conv, 2) if conv else 0,
+        "roas": round(rev / spend, 4) if spend else 0,
+        "currency": "BRL",
+    }
+
+
+def fetch_tiktok(since, until):
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    return _tiktok_base(n)
+
+
+def fetch_tiktok_breakdown(since, until, level):
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    camps = [
+        {"name": "TK_SALES_CATALOG", "w": 0.57},
+        {"name": "TK_RETARGETING_WEBSITE", "w": 0.27},
+        {"name": "TK_AWARENESS_BROAD", "w": 0.16},
+    ]
+    adsets = [
+        {"name": "Lookalike 1-3% — Purchasers", "camp": "TK_SALES_CATALOG", "w": 0.35},
+        {"name": "Broad — Video Views", "camp": "TK_SALES_CATALOG", "w": 0.22},
+        {"name": "Retargeting — Website Visitors 30d", "camp": "TK_RETARGETING_WEBSITE", "w": 0.27},
+        {"name": "Awareness — Interest Based", "camp": "TK_AWARENESS_BROAD", "w": 0.16},
+    ]
+    ads_list = [
+        {"name": "Video_Catalog_Lifestyle_01", "adset": "Lookalike 1-3% — Purchasers", "camp": "TK_SALES_CATALOG", "w": 0.22},
+        {"name": "Video_Catalog_Lifestyle_02", "adset": "Lookalike 1-3% — Purchasers", "camp": "TK_SALES_CATALOG", "w": 0.13},
+        {"name": "Video_UGC_Testimonial_01", "adset": "Broad — Video Views", "camp": "TK_SALES_CATALOG", "w": 0.22},
+        {"name": "Video_Retargeting_Promo", "adset": "Retargeting — Website Visitors 30d", "camp": "TK_RETARGETING_WEBSITE", "w": 0.27},
+        {"name": "Video_Awareness_Brand", "adset": "Awareness — Interest Based", "camp": "TK_AWARENESS_BROAD", "w": 0.16},
+    ]
+    base = _tiktok_base(n)
+    items = {"campaign": camps, "adset": adsets, "ad": ads_list}[level]
+    rows = []
+    for item in items:
+        w = item["w"]
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        rev = round(base["revenue"] * w, 2)
+        row = {
+            "name": item["name"], "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv, "revenue": rev,
+            "cpa": round(spend / conv, 2) if conv else 0,
+            "roas": round(rev / spend, 4) if spend else 0,
+        }
+        if level in ("adset", "ad"):
+            row["campaign"] = item["camp"]
+        if level == "ad":
+            row["adset"] = item["adset"]
+        rows.append(row)
+    return rows
+
+
+def fetch_tiktok_geo(since, until):
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _tiktok_base(n)
+    geos = [("Brazil", 0.73), ("Portugal", 0.16), ("United States", 0.11)]
+    rows = []
+    for country, w in geos:
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        row = {
+            "country": country, "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv,
+        }
+        rows.append(row)
+    return rows
+
+
+# ── LinkedIn Ads (demo data) ───────────────────────────────────────────────────
+
+def _linkedin_base(n):
+    spend = round(85.0 * n, 2)
+    imp = 4200 * n
+    clicks = 126 * n
+    conv = int(4 * n)
+    rev = round(1200.0 * n, 2)
+    return {
+        "spend": spend, "impressions": imp, "clicks": clicks,
+        "cpm": round(spend / imp * 1000, 6) if imp else 0,
+        "cpc": round(spend / clicks, 6) if clicks else 0,
+        "ctr": round(clicks / imp * 100, 6) if imp else 0,
+        "conversions": conv, "revenue": rev,
+        "cpa": round(spend / conv, 2) if conv else 0,
+        "roas": round(rev / spend, 4) if spend else 0,
+        "currency": "BRL",
+    }
+
+
+def fetch_linkedin(since, until):
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    return _linkedin_base(n)
+
+
+def fetch_linkedin_breakdown(since, until, level):
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    camps = [
+        {"name": "LK_CONVERSIONS_RETARGETING", "w": 0.59},
+        {"name": "LK_LEAD_GEN_COLD", "w": 0.41},
+    ]
+    adsets = [
+        {"name": "Retargeting — Website 30d", "camp": "LK_CONVERSIONS_RETARGETING", "w": 0.59},
+        {"name": "Cold — Job Function Targeting", "camp": "LK_LEAD_GEN_COLD", "w": 0.41},
+    ]
+    ads_list = [
+        {"name": "Single Image — Promo Offer", "adset": "Retargeting — Website 30d", "camp": "LK_CONVERSIONS_RETARGETING", "w": 0.59},
+        {"name": "Single Image — Brand Story", "adset": "Cold — Job Function Targeting", "camp": "LK_LEAD_GEN_COLD", "w": 0.41},
+    ]
+    base = _linkedin_base(n)
+    items = {"campaign": camps, "adset": adsets, "ad": ads_list}[level]
+    rows = []
+    for item in items:
+        w = item["w"]
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        rev = round(base["revenue"] * w, 2)
+        row = {
+            "name": item["name"], "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv, "revenue": rev,
+            "cpa": round(spend / conv, 2) if conv else 0,
+            "roas": round(rev / spend, 4) if spend else 0,
+        }
+        if level in ("adset", "ad"):
+            row["campaign"] = item["camp"]
+        if level == "ad":
+            row["adset"] = item["adset"]
+        rows.append(row)
+    return rows
+
+
+def fetch_linkedin_geo(since, until):
+    from datetime import date as _date
+    n = (_date.fromisoformat(until) - _date.fromisoformat(since)).days + 1
+    base = _linkedin_base(n)
+    geos = [("Brazil", 0.65), ("Portugal", 0.24), ("United States", 0.11)]
+    rows = []
+    for country, w in geos:
+        spend = round(base["spend"] * w, 2)
+        imp = int(base["impressions"] * w)
+        clicks = int(base["clicks"] * w)
+        conv = int(base["conversions"] * w)
+        row = {
+            "country": country, "spend": spend, "impressions": imp, "clicks": clicks,
+            "cpm": round(spend / imp * 1000, 6) if imp else 0,
+            "cpc": round(spend / clicks, 6) if clicks else 0,
+            "ctr": round(clicks / imp * 100, 6) if imp else 0,
+            "conversions": conv,
+        }
+        rows.append(row)
+    return rows
+
 # ── HTML template ──────────────────────────────────────────────────────────────
 
 HTML = r"""<!DOCTYPE html>
-<html lang="pt-BR"><head>
+<html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__CLIENT_NAME__ — Dashboard</title>
@@ -469,92 +656,108 @@ footer{text-align:center;padding:32px;font-size:12px;color:#aaa}
 <body>
 <header>
   <h1>__CLIENT_NAME__</h1>
-  <span class="upd">Atualizado __UPDATED_AT__</span>
+  <span class="upd">Updated __UPDATED_AT__</span>
 </header>
 <main>
   <div class="tabs" id="ptabs">
-    <button class="tab active" onclick="setPeriod('ontem',this)">Ontem</button>
-    <button class="tab" onclick="setPeriod('d7',this)">Últimos 7 dias</button>
-    <button class="tab" onclick="setPeriod('d30',this)">Últimos 30 dias</button>
-    <button class="tab" onclick="setPeriod('mtd',this)">Mês até hoje</button>
-    <button class="tab" onclick="setPeriod('last_month',this)">Mês passado</button>
-    <button class="tab" onclick="setPeriod('apr1',this)">Desde 1º de Abril</button>
+    <button class="tab active" onclick="setPeriod('ontem',this)">Yesterday</button>
+    <button class="tab" onclick="setPeriod('d7',this)">Last 7 Days</button>
+    <button class="tab" onclick="setPeriod('d30',this)">Last 30 Days</button>
+    <button class="tab" onclick="setPeriod('mtd',this)">Month to Date</button>
+    <button class="tab" onclick="setPeriod('last_month',this)">Last Month</button>
+    <button class="tab" onclick="setPeriod('apr1',this)">Since April 1</button>
   </div>
   <div class="tabs vtabs">
-    <button class="tab vtab active" onclick="setView('overview',this)">Visão Geral</button>
-    <button class="tab vtab" onclick="setView('campaigns',this)">Campanhas</button>
-    <button class="tab vtab" onclick="setView('adsets',this)">Conjuntos</button>
-    <button class="tab vtab" onclick="setView('ads',this)">Anúncios</button>
-    <button class="tab vtab" onclick="setView('geo',this)">Geográfico</button>
-    <button class="tab vtab" onclick="setView('relatorio',this)">Relatório</button>
+    <button class="tab vtab active" onclick="setView('overview',this)">Overview</button>
+    <button class="tab vtab" onclick="setView('campaigns',this)">Campaigns</button>
+    <button class="tab vtab" onclick="setView('adsets',this)">Ad Sets</button>
+    <button class="tab vtab" onclick="setView('ads',this)">Ads</button>
+    <button class="tab vtab" onclick="setView('geo',this)">Geographic</button>
+    <button class="tab vtab" onclick="setView('relatorio',this)">Report</button>
   </div>
 
   <div id="v-overview">
     <p class="sec">KPIs</p>
     <div class="grid" id="kpi"></div>
-    <p class="sec">Por Plataforma</p>
+    <p class="sec">By Platform</p>
     <div class="tscroll">
       <table>
         <thead><tr>
-          <th>Plataforma</th><th>Investido</th><th>Impressões</th><th>Cliques</th>
+          <th>Platform</th><th>Spend</th><th>Impressions</th><th>Clicks</th>
           <th>CPM</th><th>CPC</th><th>CTR</th>
-          <th>Conversões</th><th>Receita</th><th>CPA</th><th>ROAS</th>
+          <th>Conv.</th><th>Revenue</th><th>CPA</th><th>ROAS</th>
         </tr></thead>
         <tbody id="ptable"></tbody>
       </table>
     </div>
-    <p class="sec">Site — Google Analytics 4</p>
+    <p class="sec">Website — Google Analytics 4</p>
     <div class="grid" id="ga4"></div>
-    <p class="sec">Pedidos — Loja</p>
+    <p class="sec">Orders — Store</p>
     <div class="grid" id="wc"></div>
   </div>
 
   <div id="v-campaigns" style="display:none">
-    <p class="sec">Meta Ads — Campanhas</p>
+    <p class="sec">Meta Ads — Campaigns</p>
     <div class="tscroll" id="c-meta"></div>
-    <p class="sec">Google Ads — Campanhas</p>
+    <p class="sec">Google Ads — Campaigns</p>
     <div class="tscroll" id="c-google"></div>
+    <p class="sec">TikTok Ads — Campaigns</p>
+    <div class="tscroll" id="c-tiktok"></div>
+    <p class="sec">LinkedIn Ads — Campaigns</p>
+    <div class="tscroll" id="c-linkedin"></div>
   </div>
 
   <div id="v-adsets" style="display:none">
-    <p class="sec">Meta Ads — Conjuntos de Anúncios</p>
+    <p class="sec">Meta Ads — Ad Sets</p>
     <div class="tscroll" id="as-meta"></div>
-    <p class="sec">Google Ads — Grupos de Anúncios</p>
+    <p class="sec">Google Ads — Ad Groups</p>
     <div class="tscroll" id="as-google"></div>
+    <p class="sec">TikTok Ads — Ad Groups</p>
+    <div class="tscroll" id="as-tiktok"></div>
+    <p class="sec">LinkedIn Ads — Ad Groups</p>
+    <div class="tscroll" id="as-linkedin"></div>
   </div>
 
   <div id="v-ads" style="display:none">
-    <p class="sec">Meta Ads — Anúncios</p>
+    <p class="sec">Meta Ads — Ads</p>
     <div class="tscroll" id="ad-meta"></div>
-    <p class="sec">Google Ads — Anúncios</p>
+    <p class="sec">Google Ads — Ads</p>
     <div class="tscroll" id="ad-google"></div>
+    <p class="sec">TikTok Ads — Ads</p>
+    <div class="tscroll" id="ad-tiktok"></div>
+    <p class="sec">LinkedIn Ads — Ads</p>
+    <div class="tscroll" id="ad-linkedin"></div>
   </div>
 
   <div id="v-geo" style="display:none">
-    <p class="sec">Meta Ads — Por País</p>
+    <p class="sec">Meta Ads — By Country</p>
     <div class="tscroll" id="geo-meta"></div>
-    <p class="sec">Google Ads — Por País</p>
+    <p class="sec">Google Ads — By Country</p>
     <div class="tscroll" id="geo-google"></div>
+    <p class="sec">TikTok Ads — By Country</p>
+    <div class="tscroll" id="geo-tiktok"></div>
+    <p class="sec">LinkedIn Ads — By Country</p>
+    <div class="tscroll" id="geo-linkedin"></div>
   </div>
 
   <div id="v-relatorio" style="display:none">
-    <p class="sec">Relatório para E-mail</p>
+    <p class="sec">Email Report</p>
     <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
-      <button onclick="copyReport()" style="padding:8px 18px;border-radius:20px;font-size:13px;cursor:pointer;border:none;background:#111;color:#fff;font-weight:500">Copiar texto</button>
-      <span id="copy-msg" style="font-size:12px;color:#34c759;display:none">Copiado!</span>
+      <button onclick="copyReport()" style="padding:8px 18px;border-radius:20px;font-size:13px;cursor:pointer;border:none;background:#111;color:#fff;font-weight:500">Copy text</button>
+      <span id="copy-msg" style="font-size:12px;color:#34c759;display:none">Copied!</span>
     </div>
     <textarea id="report-text" readonly style="width:100%;height:520px;font-family:monospace;font-size:13px;background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:20px;resize:vertical;line-height:1.6"></textarea>
   </div>
 </main>
-<footer>Dashboard gerado automaticamente · __UPDATED_AT__</footer>
+<footer>Auto-updated dashboard · __UPDATED_AT__</footer>
 <script>
 const D = __DATA_JSON__;
 let curPeriod = 'ontem', curView = 'overview';
 
-const fmtBRL = v => 'R$ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtEUR = v => '€ ' + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtBRL = v => 'R$ ' + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtEUR = v => '€ ' + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt = (v, cur) => cur === 'EUR' ? fmtEUR(v) : fmtBRL(v);
-const num = v => Math.round(+v||0).toLocaleString('pt-BR');
+const num = v => Math.round(+v||0).toLocaleString('en-US');
 const xr = v => (+v||0).toFixed(2) + 'x';
 const pct = v => (+v||0).toFixed(2) + '%';
 const card = (l, v, s, blue) => `<div class="card${blue?' blue':''}"><div class="lbl">${l}</div><div class="val">${v}</div>${s?`<div class="sub">${s}</div>`:''}</div>`;
@@ -581,27 +784,31 @@ function renderView() {
 }
 
 function renderOverview(data) {
-  const {meta: m, google_ads: g, ga4, woocommerce: wc} = data;
+  const {meta: m, google_ads: g, tiktok_ads: tk, linkedin_ads: li, ga4, woocommerce: wc} = data;
   const mCur = m.currency || 'BRL', gCur = g.currency || 'BRL';
+  const tkCur = (tk||{}).currency || 'BRL', liCur = (li||{}).currency || 'BRL';
   const wcCur = wc.currency || 'EUR';
   const sameCur = mCur === gCur;
   const blend = v => fmt(v, sameCur ? mCur : 'BRL');
-  const ts = m.spend + g.spend, tc = m.clicks + g.clicks, ti = m.impressions + g.impressions;
-  const tconv = (m.purchases || 0) + (g.conversions || 0), tr = m.revenue + g.revenue;
+  const ts = m.spend + g.spend + ((tk||{}).spend||0) + ((li||{}).spend||0);
+  const tc = m.clicks + g.clicks + ((tk||{}).clicks||0) + ((li||{}).clicks||0);
+  const ti = m.impressions + g.impressions + ((tk||{}).impressions||0) + ((li||{}).impressions||0);
+  const tconv = (m.purchases || 0) + (g.conversions || 0) + ((tk||{}).conversions||0) + ((li||{}).conversions||0);
+  const tr = m.revenue + g.revenue + ((tk||{}).revenue||0) + ((li||{}).revenue||0);
 
   document.getElementById('kpi').innerHTML = [
-    card('Total Investido', blend(ts), sameCur ? 'Meta + Google Ads' : `Meta (${mCur}) + Google (${gCur})`, true),
-    card('Receita (Ads)', blend(tr), 'atribuição das plataformas'),
-    card('ROAS Blendado', xr(ts ? tr/ts : 0), 'retorno sobre investimento'),
-    card('CPA Blendado', blend(tconv ? ts/tconv : 0), 'custo por conversão'),
-    card('CPM Blendado', blend(ti ? ts/ti*1000 : 0), 'custo por mil impressões'),
-    card('CPC Blendado', blend(tc ? ts/tc : 0), 'custo por clique'),
-    card('CTR Blendado', pct(ti ? tc/ti*100 : 0), 'taxa de clique'),
-    card('Conversões', num(tconv), 'compras atribuídas'),
-    card('Visitas (GA4)', num(ga4.sessions), 'sessões no site'),
-    card('Custo por Visita', blend(ga4.sessions ? ts/ga4.sessions : 0), 'investimento / sessões GA4'),
-    card('Connect Rate', pct(tc ? ga4.sessions/tc*100 : 0), 'sessões GA4 / cliques nos ads'),
-    card('Taxa de Conversão', pct(ga4.conversion_rate), 'GA4 — sessão → compra'),
+    card('Total Spend', blend(ts), sameCur ? 'Meta + Google Ads' : `Meta (${mCur}) + Google (${gCur})`, true),
+    card('Revenue (Ads)', blend(tr), 'platform attribution'),
+    card('Blended ROAS', xr(ts ? tr/ts : 0), 'return on ad spend'),
+    card('Blended CPA', blend(tconv ? ts/tconv : 0), 'cost per conversion'),
+    card('Blended CPM', blend(ti ? ts/ti*1000 : 0), 'cost per thousand impressions'),
+    card('Blended CPC', blend(tc ? ts/tc : 0), 'cost per click'),
+    card('Blended CTR', pct(ti ? tc/ti*100 : 0), 'click-through rate'),
+    card('Conversions', num(tconv), 'attributed purchases'),
+    card('Sessions (GA4)', num(ga4.sessions), 'website sessions'),
+    card('Cost per Visit', blend(ga4.sessions ? ts/ga4.sessions : 0), 'spend / GA4 sessions'),
+    card('Connect Rate', pct(tc ? ga4.sessions/tc*100 : 0), 'GA4 sessions / ad clicks'),
+    card('Conversion Rate', pct(ga4.conversion_rate), 'GA4 — session → purchase'),
   ].join('');
 
   const prow = (color, name, d, conv, cur) => `<tr>
@@ -614,6 +821,8 @@ function renderOverview(data) {
   document.getElementById('ptable').innerHTML =
     prow('#0866ff','Meta Ads', m, m.purchases||0, mCur) +
     prow('#ea4335','Google Ads', g, g.conversions||0, gCur) +
+    (tk&&tk.spend ? prow('#010101','TikTok Ads', tk, tk.conversions||0, tkCur) : '') +
+    (li&&li.spend ? prow('#0a66c2','LinkedIn Ads', li, li.conversions||0, liCur) : '') +
     `<tr class="total"><td>Total</td>
     <td>${blend(ts)}</td><td>${num(ti)}</td><td>${num(tc)}</td>
     <td>${blend(ti?ts/ti*1000:0)}</td><td>${blend(tc?ts/tc:0)}</td><td>${pct(ti?tc/ti*100:0)}</td>
@@ -621,24 +830,24 @@ function renderOverview(data) {
     </tr>`;
 
   document.getElementById('ga4').innerHTML = [
-    card('Sessões', num(ga4.sessions)),
-    card('Usuários', num(ga4.users)),
-    card('Transações', num(ga4.transactions)),
-    card('Receita GA4', fmt(ga4.revenue, wcCur)),
-    card('Taxa de Conversão', pct(ga4.conversion_rate)),
+    card('Sessions', num(ga4.sessions)),
+    card('Users', num(ga4.users)),
+    card('Transactions', num(ga4.transactions)),
+    card('GA4 Revenue', fmt(ga4.revenue, wcCur)),
+    card('Conversion Rate', pct(ga4.conversion_rate)),
   ].join('');
 
   document.getElementById('wc').innerHTML = [
-    card('Pedidos', num(wc.orders)),
-    card('Receita Loja', fmt(wc.revenue, wcCur)),
-    card('Ticket Médio', fmt(wc.avg_ticket, wcCur)),
+    card('Orders', num(wc.orders)),
+    card('Store Revenue', fmt(wc.revenue, wcCur)),
+    card('Avg. Order Value', fmt(wc.avg_ticket, wcCur)),
   ].join('');
 }
 
 function brkTable(rows, cur, showCamp, showAdset) {
-  if (!rows || !rows.length) return '<span class="empty">Sem dados para o período</span>';
-  const hdrs = ['Nome', ...(showCamp?['Campanha']:[]), ...(showAdset?['Conjunto']:[]),
-    'Investido','Impressões','Cliques','CPM','CPC','CTR','Conv.','Receita','CPA','ROAS'];
+  if (!rows || !rows.length) return '<span class="empty">No data for this period</span>';
+  const hdrs = ['Name', ...(showCamp?['Campaign']:[]), ...(showAdset?['Ad Set']:[]),
+    'Spend','Impressions','Clicks','CPM','CPC','CTR','Conv.','Revenue','CPA','ROAS'];
   const getConv = d => d.conversions !== undefined ? d.conversions : (d.purchases || 0);
   const trs = rows.map(d => `<tr>
     <td class="name" title="${d.name}">${d.name}</td>
@@ -652,7 +861,7 @@ function brkTable(rows, cur, showCamp, showAdset) {
 }
 
 function geoTable(rows, cur) {
-  if (!rows || !rows.length) return '<span class="empty">Sem dados para o período</span>';
+  if (!rows || !rows.length) return '<span class="empty">No data for this period</span>';
   const getConv = d => d.conversions !== undefined ? d.conversions : (d.purchases || 0);
   const trs = rows.map(d => `<tr>
     <td>${d.country}</td><td>${fmt(d.spend,cur)}</td><td>${num(d.impressions)}</td>
@@ -660,104 +869,117 @@ function geoTable(rows, cur) {
     <td>${pct(d.ctr)}</td><td>${num(getConv(d))}</td>
   </tr>`).join('');
   return `<table><thead><tr>
-    <th>País</th><th>Investido</th><th>Impressões</th><th>Cliques</th>
-    <th>CPM</th><th>CPC</th><th>CTR</th><th>Conversões</th>
+    <th>Country</th><th>Spend</th><th>Impressions</th><th>Clicks</th>
+    <th>CPM</th><th>CPC</th><th>CTR</th><th>Conversions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
 }
 
 function renderCampaigns(data) {
   document.getElementById('c-meta').innerHTML = brkTable(data.meta_campaigns, data.meta.currency||'BRL', false, false);
   document.getElementById('c-google').innerHTML = brkTable(data.google_campaigns, data.google_ads.currency||'BRL', false, false);
+  document.getElementById('c-tiktok').innerHTML = brkTable(data.tiktok_campaigns, (data.tiktok_ads||{}).currency||'BRL', false, false);
+  document.getElementById('c-linkedin').innerHTML = brkTable(data.linkedin_campaigns, (data.linkedin_ads||{}).currency||'BRL', false, false);
 }
 function renderAdsets(data) {
   document.getElementById('as-meta').innerHTML = brkTable(data.meta_adsets, data.meta.currency||'BRL', true, false);
   document.getElementById('as-google').innerHTML = brkTable(data.google_adgroups, data.google_ads.currency||'BRL', true, false);
+  document.getElementById('as-tiktok').innerHTML = brkTable(data.tiktok_adgroups, (data.tiktok_ads||{}).currency||'BRL', true, false);
+  document.getElementById('as-linkedin').innerHTML = brkTable(data.linkedin_adgroups, (data.linkedin_ads||{}).currency||'BRL', true, false);
 }
 function renderAds(data) {
   document.getElementById('ad-meta').innerHTML = brkTable(data.meta_ads, data.meta.currency||'BRL', true, true);
   document.getElementById('ad-google').innerHTML = brkTable(data.google_ads_breakdown, data.google_ads.currency||'BRL', true, true);
+  document.getElementById('ad-tiktok').innerHTML = brkTable(data.tiktok_ads_breakdown, (data.tiktok_ads||{}).currency||'BRL', true, true);
+  document.getElementById('ad-linkedin').innerHTML = brkTable(data.linkedin_ads_breakdown, (data.linkedin_ads||{}).currency||'BRL', true, true);
 }
 function renderGeo(data) {
   document.getElementById('geo-meta').innerHTML = geoTable(data.meta_geo, data.meta.currency||'BRL');
   document.getElementById('geo-google').innerHTML = geoTable(data.google_geo, data.google_ads.currency||'BRL');
+  document.getElementById('geo-tiktok').innerHTML = geoTable(data.tiktok_geo, (data.tiktok_ads||{}).currency||'BRL');
+  document.getElementById('geo-linkedin').innerHTML = geoTable(data.linkedin_geo, (data.linkedin_ads||{}).currency||'BRL');
 }
 
 renderView();
 
 function renderRelatorio(data) {
-  const {meta: m, google_ads: g, ga4, woocommerce: wc, meta_campaigns, google_campaigns, meta_adsets, google_adgroups, meta_ads, google_ads_breakdown} = data;
+  const {meta: m, google_ads: g, tiktok_ads: tk, linkedin_ads: li, ga4, woocommerce: wc, meta_campaigns, google_campaigns, tiktok_campaigns, linkedin_campaigns, meta_adsets, google_adgroups, tiktok_adgroups, linkedin_adgroups, meta_ads, google_ads_breakdown, tiktok_ads_breakdown, linkedin_ads_breakdown} = data;
   const mCur = m.currency || 'BRL', gCur = g.currency || 'BRL';
-  const ts = m.spend + g.spend, tr = m.revenue + g.revenue;
-  const tconv = (m.purchases || 0) + (g.conversions || 0);
-  const tc = m.clicks + g.clicks, ti = m.impressions + g.impressions;
+  const tkCur = (tk||{}).currency || 'BRL', liCur = (li||{}).currency || 'BRL';
+  const ts = m.spend + g.spend + ((tk||{}).spend||0) + ((li||{}).spend||0);
+  const tr = m.revenue + g.revenue + ((tk||{}).revenue||0) + ((li||{}).revenue||0);
+  const tconv = (m.purchases || 0) + (g.conversions || 0) + ((tk||{}).conversions||0) + ((li||{}).conversions||0);
+  const tc = m.clicks + g.clicks + ((tk||{}).clicks||0) + ((li||{}).clicks||0);
+  const ti = m.impressions + g.impressions + ((tk||{}).impressions||0) + ((li||{}).impressions||0);
 
-  const b = (v, c) => (c==='EUR'?'€ ':'R$ ') + (+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const n = v => Math.round(+v||0).toLocaleString('pt-BR');
+  const b = (v, c) => (c==='EUR'?'€ ':'R$ ') + (+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const n = v => Math.round(+v||0).toLocaleString('en-US');
   const p = v => (+v||0).toFixed(2) + '%';
   const x = v => (+v||0).toFixed(2) + 'x';
   const line = '━'.repeat(40);
   const dash = '—';
 
-  const periodLabel = {ontem:'Ontem',d7:'Últimos 7 dias',d30:'Últimos 30 dias',mtd:'Mês até hoje',last_month:'Mês passado',apr1:'1º de Abril até hoje'}[curPeriod] || curPeriod;
+  const periodLabel = {ontem:'Yesterday',d7:'Last 7 Days',d30:'Last 30 Days',mtd:'Month to Date',last_month:'Last Month',apr1:'Since April 1st'}[curPeriod] || curPeriod;
 
   let r = '';
-  r += 'RELATÓRIO DE PERFORMANCE\n';
+  r += 'PERFORMANCE REPORT\n';
   r += periodLabel.toUpperCase() + '\n';
   r += line + '\n\n';
 
-  r += 'RESUMO GERAL\n';
-  r += `Investimento Total ........ ${b(ts,'BRL')}\n`;
+  r += 'GENERAL SUMMARY\n';
+  r += `Total Spend ............... ${b(ts,'BRL')}\n`;
   r += `  Meta Ads ................ ${b(m.spend,mCur)}\n`;
   r += `  Google Ads .............. ${b(g.spend,gCur)}\n`;
-  r += `Receita (atribuída) ....... ${b(tr,'BRL')}\n`;
-  r += `ROAS Blendado ............. ${x(ts?tr/ts:0)}\n`;
-  r += `CPA Blendado .............. ${b(tconv?ts/tconv:0,'BRL')}\n`;
-  r += `Conversões Totais ......... ${n(tconv)}\n`;
-  r += `Impressões ................ ${n(ti)}\n`;
-  r += `Cliques ................... ${n(tc)}\n`;
-  r += `CTR Blendado .............. ${p(ti?tc/ti*100:0)}\n`;
-  r += `CPM Blendado .............. ${b(ti?ts/ti*1000:0,'BRL')}\n`;
-  r += `CPC Blendado .............. ${b(tc?ts/tc:0,'BRL')}\n\n`;
+  if(tk&&tk.spend) r += `  TikTok Ads .............. ${b(tk.spend,tkCur)}\n`;
+  if(li&&li.spend) r += `  LinkedIn Ads ............. ${b(li.spend,liCur)}\n`;
+  r += `Revenue (attributed) ..... ${b(tr,'BRL')}\n`;
+  r += `Blended ROAS .............. ${x(ts?tr/ts:0)}\n`;
+  r += `Blended CPA ............... ${b(tconv?ts/tconv:0,'BRL')}\n`;
+  r += `Total Conversions ......... ${n(tconv)}\n`;
+  r += `Impressions ............... ${n(ti)}\n`;
+  r += `Clicks .................... ${n(tc)}\n`;
+  r += `Blended CTR ............... ${p(ti?tc/ti*100:0)}\n`;
+  r += `Blended CPM ............... ${b(ti?ts/ti*1000:0,'BRL')}\n`;
+  r += `Blended CPC ............... ${b(tc?ts/tc:0,'BRL')}\n\n`;
 
   r += line + '\n';
   r += 'META ADS\n';
   r += line + '\n';
-  r += `Investimento .............. ${b(m.spend,mCur)}\n`;
-  r += `Impressões ................ ${n(m.impressions)}\n`;
-  r += `Cliques ................... ${n(m.clicks)}\n`;
+  r += `Spend ..................... ${b(m.spend,mCur)}\n`;
+  r += `Impressions ............... ${n(m.impressions)}\n`;
+  r += `Clicks .................... ${n(m.clicks)}\n`;
   r += `CTR ....................... ${p(m.ctr)}\n`;
   r += `CPM ....................... ${b(m.cpm,mCur)}\n`;
   r += `CPC ....................... ${b(m.cpc,mCur)}\n`;
-  r += `Compras ................... ${n(m.purchases||0)}\n`;
-  r += `Receita ................... ${b(m.revenue,mCur)}\n`;
+  r += `Purchases ................. ${n(m.purchases||0)}\n`;
+  r += `Revenue ................... ${b(m.revenue,mCur)}\n`;
   r += `ROAS ...................... ${x(m.roas)}\n`;
   r += `CPA ....................... ${b(m.cpa,mCur)}\n`;
-  r += `Alcance ................... ${n(m.reach||0)}\n\n`;
+  r += `Reach ..................... ${n(m.reach||0)}\n\n`;
 
   if (meta_campaigns && meta_campaigns.length) {
-    r += 'Campanhas Meta (top ' + Math.min(meta_campaigns.length,5) + '):\n';
+    r += 'Meta Campaigns (top ' + Math.min(meta_campaigns.length,5) + '):\n';
     meta_campaigns.slice(0,5).forEach((c,i) => {
       r += `  ${i+1}. ${c.name}\n`;
-      r += `     Investido: ${b(c.spend,mCur)} | ROAS: ${x(c.roas)} | Compras: ${n(c.purchases||0)} | CPA: ${b(c.cpa,mCur)}\n`;
+      r += `     Spend: ${b(c.spend,mCur)} | ROAS: ${x(c.roas)} | Purchases: ${n(c.purchases||0)} | CPA: ${b(c.cpa,mCur)}\n`;
     });
     r += '\n';
   }
 
   if (meta_adsets && meta_adsets.length) {
-    r += 'Conjuntos Meta (top ' + Math.min(meta_adsets.length,5) + '):\n';
+    r += 'Meta Ad Sets (top ' + Math.min(meta_adsets.length,5) + '):\n';
     meta_adsets.slice(0,5).forEach((c,i) => {
       r += `  ${i+1}. ${c.name}\n`;
-      r += `     Investido: ${b(c.spend,mCur)} | CTR: ${p(c.ctr)} | CPC: ${b(c.cpc,mCur)} | Compras: ${n(c.purchases||0)}\n`;
+      r += `     Spend: ${b(c.spend,mCur)} | CTR: ${p(c.ctr)} | CPC: ${b(c.cpc,mCur)} | Purchases: ${n(c.purchases||0)}\n`;
     });
     r += '\n';
   }
 
   if (meta_ads && meta_ads.length) {
-    r += 'Anúncios Meta (top ' + Math.min(meta_ads.length,5) + '):\n';
+    r += 'Meta Ads (top ' + Math.min(meta_ads.length,5) + '):\n';
     meta_ads.slice(0,5).forEach((c,i) => {
       r += `  ${i+1}. ${c.name}\n`;
-      r += `     Campanha: ${c.campaign||dash} | Conjunto: ${c.adset||dash}\n`;
-      r += `     Investido: ${b(c.spend,mCur)} | CTR: ${p(c.ctr)} | Compras: ${n(c.purchases||0)} | ROAS: ${x(c.roas)}\n`;
+      r += `     Campaign: ${c.campaign||dash} | Ad Set: ${c.adset||dash}\n`;
+      r += `     Spend: ${b(c.spend,mCur)} | CTR: ${p(c.ctr)} | Purchases: ${n(c.purchases||0)} | ROAS: ${x(c.roas)}\n`;
     });
     r += '\n';
   }
@@ -765,55 +987,104 @@ function renderRelatorio(data) {
   r += line + '\n';
   r += 'GOOGLE ADS\n';
   r += line + '\n';
-  r += `Investimento .............. ${b(g.spend,gCur)}\n`;
-  r += `Impressões ................ ${n(g.impressions)}\n`;
-  r += `Cliques ................... ${n(g.clicks)}\n`;
+  r += `Spend ..................... ${b(g.spend,gCur)}\n`;
+  r += `Impressions ............... ${n(g.impressions)}\n`;
+  r += `Clicks .................... ${n(g.clicks)}\n`;
   r += `CTR ....................... ${p(g.ctr)}\n`;
   r += `CPM ....................... ${b(g.cpm,gCur)}\n`;
   r += `CPC ....................... ${b(g.cpc,gCur)}\n`;
-  r += `Conversões ................ ${n(g.conversions||0)}\n`;
-  r += `Receita ................... ${b(g.revenue,gCur)}\n`;
+  r += `Conversions ............... ${n(g.conversions||0)}\n`;
+  r += `Revenue ................... ${b(g.revenue,gCur)}\n`;
   r += `ROAS ...................... ${x(g.roas)}\n`;
   r += `CPA ....................... ${b(g.cpa,gCur)}\n\n`;
 
   if (google_campaigns && google_campaigns.length) {
-    r += 'Campanhas Google (top ' + Math.min(google_campaigns.length,5) + '):\n';
+    r += 'Google Campaigns (top ' + Math.min(google_campaigns.length,5) + '):\n';
     google_campaigns.slice(0,5).forEach((c,i) => {
       r += `  ${i+1}. ${c.name} [${c.status}]\n`;
-      r += `     Investido: ${b(c.spend,gCur)} | ROAS: ${x(c.roas)} | Conv.: ${n(c.conversions||0)} | CPA: ${b(c.cpa,gCur)}\n`;
+      r += `     Spend: ${b(c.spend,gCur)} | ROAS: ${x(c.roas)} | Conv.: ${n(c.conversions||0)} | CPA: ${b(c.cpa,gCur)}\n`;
     });
     r += '\n';
   }
 
   if (google_adgroups && google_adgroups.length) {
-    r += 'Grupos Google (top ' + Math.min(google_adgroups.length,5) + '):\n';
+    r += 'Google Ad Groups (top ' + Math.min(google_adgroups.length,5) + '):\n';
     google_adgroups.slice(0,5).forEach((c,i) => {
       r += `  ${i+1}. ${c.name}\n`;
-      r += `     Campanha: ${c.campaign||dash} | Investido: ${b(c.spend,gCur)} | CTR: ${p(c.ctr)} | Conv.: ${n(c.conversions||0)}\n`;
+      r += `     Campaign: ${c.campaign||dash} | Spend: ${b(c.spend,gCur)} | CTR: ${p(c.ctr)} | Conv.: ${n(c.conversions||0)}\n`;
     });
+    r += '\n';
+  }
+
+
+  if (tk && tk.spend) {
+    r += line + '\n';
+    r += 'TIKTOK ADS\n';
+    r += line + '\n';
+    r += `Spend ..................... ${b(tk.spend,tkCur)}\n`;
+    r += `Impressions ............... ${n(tk.impressions||0)}\n`;
+    r += `Clicks .................... ${n(tk.clicks||0)}\n`;
+    r += `CTR ....................... ${p(tk.ctr||0)}\n`;
+    r += `CPM ....................... ${b(tk.cpm||0,tkCur)}\n`;
+    r += `CPC ....................... ${b(tk.cpc||0,tkCur)}\n`;
+    r += `Conversions ............... ${n(tk.conversions||0)}\n`;
+    r += `Revenue ................... ${b(tk.revenue||0,tkCur)}\n`;
+    r += `ROAS ...................... ${x(tk.roas||0)}\n`;
+    r += `CPA ....................... ${b(tk.cpa||0,tkCur)}\n`;
+    if (tiktok_campaigns && tiktok_campaigns.length) {
+      r += 'TikTok Campaigns (top ' + Math.min(tiktok_campaigns.length,5) + '):\n';
+      tiktok_campaigns.slice(0,5).forEach((c,i) => {
+        r += `  ${i+1}. ${c.name}\n`;
+        r += `     Spend: ${b(c.spend,tkCur)} | ROAS: ${x(c.roas)} | Conv.: ${n(c.conversions||0)} | CPA: ${b(c.cpa,tkCur)}\n`;
+      });
+    }
+    r += '\n';
+  }
+
+  if (li && li.spend) {
+    r += line + '\n';
+    r += 'LINKEDIN ADS\n';
+    r += line + '\n';
+    r += `Spend ..................... ${b(li.spend,liCur)}\n`;
+    r += `Impressions ............... ${n(li.impressions||0)}\n`;
+    r += `Clicks .................... ${n(li.clicks||0)}\n`;
+    r += `CTR ....................... ${p(li.ctr||0)}\n`;
+    r += `CPM ....................... ${b(li.cpm||0,liCur)}\n`;
+    r += `CPC ....................... ${b(li.cpc||0,liCur)}\n`;
+    r += `Conversions ............... ${n(li.conversions||0)}\n`;
+    r += `Revenue ................... ${b(li.revenue||0,liCur)}\n`;
+    r += `ROAS ...................... ${x(li.roas||0)}\n`;
+    r += `CPA ....................... ${b(li.cpa||0,liCur)}\n`;
+    if (linkedin_campaigns && linkedin_campaigns.length) {
+      r += 'LinkedIn Campaigns (top ' + Math.min(linkedin_campaigns.length,5) + '):\n';
+      linkedin_campaigns.slice(0,5).forEach((c,i) => {
+        r += `  ${i+1}. ${c.name}\n`;
+        r += `     Spend: ${b(c.spend,liCur)} | ROAS: ${x(c.roas)} | Conv.: ${n(c.conversions||0)} | CPA: ${b(c.cpa,liCur)}\n`;
+      });
+    }
     r += '\n';
   }
 
   r += line + '\n';
   r += 'GOOGLE ANALYTICS 4\n';
   r += line + '\n';
-  r += `Sessões ................... ${n(ga4.sessions)}\n`;
-  r += `Usuários .................. ${n(ga4.users)}\n`;
-  r += `Transações ................ ${n(ga4.transactions)}\n`;
-  r += `Receita GA4 ............... ${b(ga4.revenue,'BRL')}\n`;
-  r += `Taxa de Conversão ......... ${p(ga4.conversion_rate)}\n`;
-  r += `Custo por Visita .......... ${b(ga4.sessions?ts/ga4.sessions:0,'BRL')}\n`;
+  r += `Sessions .................. ${n(ga4.sessions)}\n`;
+  r += `Users ..................... ${n(ga4.users)}\n`;
+  r += `Transactions .............. ${n(ga4.transactions)}\n`;
+  r += `GA4 Revenue ............... ${b(ga4.revenue,'BRL')}\n`;
+  r += `Conversion Rate ........... ${p(ga4.conversion_rate)}\n`;
+  r += `Cost per Visit ............ ${b(ga4.sessions?ts/ga4.sessions:0,'BRL')}\n`;
   r += `Connect Rate .............. ${p(tc?ga4.sessions/tc*100:0)}\n\n`;
 
   r += line + '\n';
-  r += 'LOJA (WOOCOMMERCE)\n';
+  r += 'STORE (WOOCOMMERCE)\n';
   r += line + '\n';
-  r += `Pedidos ................... ${n(wc.orders)}\n`;
-  r += `Receita ................... ${b(wc.revenue,'BRL')}\n`;
-  r += `Ticket Médio .............. ${b(wc.avg_ticket,'BRL')}\n\n`;
+  r += `Orders .................... ${n(wc.orders)}\n`;
+  r += `Revenue ................... ${b(wc.revenue,'BRL')}\n`;
+  r += `Avg. Order Value .......... ${b(wc.avg_ticket,'BRL')}\n\n`;
 
   r += line + '\n';
-  r += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
+  r += `Generated on: ${new Date().toLocaleString('en-US')}\n`;
 
   document.getElementById('report-text').value = r;
 }
@@ -836,14 +1107,24 @@ def _fetch_period(since, until):
     return {
         "meta": fetch_meta(since, until),
         "google_ads": fetch_google_ads(since, until),
+        "tiktok_ads": fetch_tiktok(since, until),
+        "linkedin_ads": fetch_linkedin(since, until),
         "meta_campaigns": fetch_meta_breakdown(since, until, "campaign"),
         "meta_adsets": fetch_meta_breakdown(since, until, "adset"),
         "meta_ads": fetch_meta_breakdown(since, until, "ad"),
         "google_campaigns": fetch_google_campaigns(since, until),
         "google_adgroups": fetch_google_adgroups(since, until),
         "google_ads_breakdown": fetch_google_ads_breakdown(since, until),
+        "tiktok_campaigns": fetch_tiktok_breakdown(since, until, "campaign"),
+        "tiktok_adgroups": fetch_tiktok_breakdown(since, until, "adset"),
+        "tiktok_ads_breakdown": fetch_tiktok_breakdown(since, until, "ad"),
+        "linkedin_campaigns": fetch_linkedin_breakdown(since, until, "campaign"),
+        "linkedin_adgroups": fetch_linkedin_breakdown(since, until, "adset"),
+        "linkedin_ads_breakdown": fetch_linkedin_breakdown(since, until, "ad"),
         "meta_geo": fetch_meta_geo(since, until),
         "google_geo": fetch_google_geo(since, until),
+        "tiktok_geo": fetch_tiktok_geo(since, until),
+        "linkedin_geo": fetch_linkedin_geo(since, until),
         "ga4": fetch_ga4(since, until),
         "woocommerce": fetch_woocommerce(since, until),
     }
@@ -859,7 +1140,7 @@ def main():
     last_month_start = last_month_end.replace(day=1).strftime("%Y-%m-%d")
     today_str = today.strftime("%Y-%m-%d")
 
-    print("Buscando dados...")
+    print("Fetching data...")
     apr1_start = today.replace(month=4, day=1).strftime("%Y-%m-%d")
 
     data = {
@@ -884,7 +1165,7 @@ def main():
     out = os.path.join(os.path.dirname(os.path.dirname(__file__)), "index.html")
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"Gerado: index.html ({updated_at})")
+    print(f"Generated: index.html ({updated_at})")
 
 
 if __name__ == "__main__":
