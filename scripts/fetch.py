@@ -386,9 +386,9 @@ def fetch_ga4(since, until):
                 },
                 timeout=15,
             ).json()
-            if "access_token" not in tok:
-                raise RuntimeError(f"token failed: {tok.get('error')}")
-            return _ga4_via_rest(since, until, tok["access_token"])
+            if "access_token" in tok:
+                return _ga4_via_rest(since, until, tok["access_token"])
+            print(f"[GA4] token failed: {tok.get('error')}, tentando Service Account")
         creds = service_account.Credentials.from_service_account_info(
             json.loads(os.environ["GA4_CREDENTIALS_JSON"]),
             scopes=["https://www.googleapis.com/auth/analytics.readonly"],
